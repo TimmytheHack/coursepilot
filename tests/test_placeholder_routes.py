@@ -78,13 +78,14 @@ def test_course_search_returns_typed_placeholder_response() -> None:
     assert payload["results"][0]["course_id"] == "CS000"
 
 
-def test_eval_run_returns_typed_placeholder_response() -> None:
-    """Eval run route should return the expected placeholder schema."""
+def test_eval_run_returns_eval_summary_response() -> None:
+    """Eval run route should return the expected evaluation summary schema."""
     response = client.post("/eval/run")
 
+    payload = response.json()
+
     assert response.status_code == 200
-    assert response.json() == {
-        "run_id": "placeholder-eval-run",
-        "status": "not_started",
-        "summary": "Evaluation pipeline has not been implemented yet.",
-    }
+    assert payload["status"] == "completed"
+    assert payload["run_id"].startswith("eval-")
+    assert payload["metrics"]["schema_success_rate"] >= 0.0
+    assert payload["report_path"].endswith(".json")

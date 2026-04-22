@@ -1,7 +1,8 @@
-"""Placeholder evaluation routes for the CoursePilot backend."""
+"""Evaluation routes for the CoursePilot backend."""
 
 from fastapi import APIRouter
 
+from app.eval.runner import run_eval_suite
 from app.models.schemas import EvalRunResponse
 
 router = APIRouter(prefix="/eval", tags=["eval"])
@@ -9,9 +10,5 @@ router = APIRouter(prefix="/eval", tags=["eval"])
 
 @router.post("/run", response_model=EvalRunResponse)
 def run_eval() -> EvalRunResponse:
-    """Return a typed placeholder response for evaluation runs."""
-    return EvalRunResponse(
-        run_id="placeholder-eval-run",
-        status="not_started",
-        summary="Evaluation pipeline has not been implemented yet.",
-    )
+    """Run the offline evaluation suite and return a summary."""
+    return run_eval_suite()

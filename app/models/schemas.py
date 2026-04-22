@@ -1,5 +1,7 @@
 """Typed API schemas for the CoursePilot backend."""
 
+from typing import Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -66,6 +68,8 @@ class EvalRunResponse(BaseModel):
     run_id: str
     status: str
     summary: str
+    metrics: dict[str, float] = Field(default_factory=dict)
+    report_path: Optional[str] = None
 
 
 class ErrorResponse(BaseModel):
