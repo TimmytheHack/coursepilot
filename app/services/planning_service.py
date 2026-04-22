@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from app.models.schemas import CoursePlan, PlanGenerateRequest, PlanningResponse
+from app.services.memory_service import MemoryService
 from app.tools.catalog import load_course_catalog, load_course_catalog_by_id
 from app.tools.course_search import course_search
 from app.tools.graduation_checker import graduation_checker
@@ -257,13 +258,58 @@ def _build_risks(
     return risks
 
 
-def generate_semester_plan(request: PlanGenerateRequest) -> PlanningResponse:
+def _request_to_data(request: PlanGenerateRequest) -> dict[str, Any]:
+    """Convert a request model to a plain dictionary across Pydantic versions."""
+    if hasattr(request, "model_dump"):
+        return request.model_dump()
+    return request.dict()
+
+
+def _request_with_memory_context(
+    request: PlanGenerateRequest,
+    memory_service: MemoryService,
+) -> PlanGenerateRequest:
+    """Merge stored memory context into a planning request when fields are omitted."""
+    user_context = memory_service.load_user_context(request.user_id)
+    request_data = _request_to_data(request)
+
+    completed_courses = request.completed_courses or user_context["completed_courses"]
+    preferred_directions = request.preferred_directions or user_context["preferred_directions"]
+
+    if request.completed_courses:
+        memory_service.save_user_profile(
+            request.user_id,
+            {"completed_courses": request.completed_courses},
+        )
+    if request.preferred_directions:
+        memory_service.upsert_memory(
+            request.user_id,
+            "preference",
+            "preferred_directions",
+            request.preferred_directions,
+        )
+
+    return PlanGenerateRequest(
+        **{
+            **request_data,
+            "completed_courses": completed_courses,
+            "preferred_directions": preferred_directions,
+        }
+    )
+
+
+def generate_semester_plan(
+    request: PlanGenerateRequest,
+    memory_service: MemoryService | None = None,
+) -> PlanningResponse:
     """Generate deterministic candidate semester plans from local tools and data."""
-    season = _term_season(request.term)
+    resolved_memory_service = memory_service or MemoryService()
+    resolved_request = _request_with_memory_context(request, resolved_memory_service)
+    season = _term_season(resolved_request.term)
     course_catalog = load_course_catalog()
     course_catalog_by_id = load_course_catalog_by_id()
     degree_requirements = _load_degree_requirements()
-    candidates = _candidate_rankings(request, season, course_catalog, course_catalog_by_id)
+    candidates = _candidate_rankings(resolved_request, season, course_catalog, course_catalog_by_id)
 
     variants = ("balanced", "ambitious", "conservative")
     built_plans: list[CoursePlan] = []
@@ -272,7 +318,7 @@ def generate_semester_plan(request: PlanGenerateRequest) -> PlanningResponse:
         selected_courses = _select_courses_for_variant(
             variant,
             candidates,
-            request,
+            resolved_request,
             season,
             course_catalog_by_id,
         )
@@ -284,7 +330,7 @@ def generate_semester_plan(request: PlanGenerateRequest) -> PlanningResponse:
             continue
 
         prerequisite_results = prerequisite_checker(
-            request.completed_courses,
+            resolved_request.completed_courses,
             selected_courses,
             course_catalog_by_id,
         )
@@ -296,11 +342,11 @@ def generate_semester_plan(request: PlanGenerateRequest) -> PlanningResponse:
 
         workload_summary = workload_estimator(selected_courses, course_catalog_by_id)
         graduation_summary = graduation_checker(
-            request.completed_courses,
+            resolved_request.completed_courses,
             selected_courses,
             degree_requirements,
         )
-        target_count = _target_course_count(variant, request.max_courses)
+        target_count = _target_course_count(variant, resolved_request.max_courses)
 
         built_plans.append(
             CoursePlan(
@@ -323,7 +369,7 @@ def generate_semester_plan(request: PlanGenerateRequest) -> PlanningResponse:
         raise ValueError("No valid plans could be generated from the current request constraints.")
 
     summary = (
-        f"Generated {len(built_plans)} validated plan option(s) for {request.term} "
+        f"Generated {len(built_plans)} validated plan option(s) for {resolved_request.term} "
         f"using deterministic search and validation tools."
     )
     next_actions = [
@@ -331,7 +377,7 @@ def generate_semester_plan(request: PlanGenerateRequest) -> PlanningResponse:
         "Add persistent user memory next so completed courses and preferences do not need to be resent.",
     ]
     return PlanningResponse(
-        trace_id=f"plan-{request.user_id}-{_normalize(request.term).replace(' ', '-')}",
+        trace_id=f"plan-{resolved_request.user_id}-{_normalize(resolved_request.term).replace(' ', '-')}",
         plans=built_plans,
         summary=summary,
         next_actions=next_actions,
