@@ -198,6 +198,15 @@ def _build_risks(
     return risks
 
 
+def _validate_completed_courses(completed_courses: list[str]) -> None:
+    """Fail loudly when a request references unknown completed course IDs."""
+    course_catalog_by_id = load_course_catalog_by_id()
+    missing_course_ids = [course_id for course_id in completed_courses if course_id not in course_catalog_by_id]
+    if missing_course_ids:
+        missing_list = ", ".join(sorted(set(missing_course_ids)))
+        raise ValueError(f"Unknown completed course IDs: {missing_list}")
+
+
 def _build_validation_facts(result: dict[str, Any]) -> list[str]:
     """Build concise public validation facts for one validated plan."""
     workload_summary = result["workload_summary"]
@@ -260,6 +269,7 @@ def load_user_context(
             "preferred_directions": preferred_directions,
         }
     )
+    _validate_completed_courses(resolved_request.completed_courses)
 
     updated_state = dict(state)
     updated_state.update(
