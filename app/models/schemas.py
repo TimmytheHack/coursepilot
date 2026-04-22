@@ -1,6 +1,6 @@
 """Typed API schemas for the CoursePilot backend."""
 
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
@@ -90,6 +90,49 @@ class EvalRunResponse(BaseModel):
     summary: str
     metrics: dict[str, float] = Field(default_factory=dict)
     report_path: Optional[str] = None
+
+
+class TraceStageDebug(BaseModel):
+    """Safe trace stage payload for read-only debug APIs."""
+
+    stage: str
+    details: dict[str, Any] = Field(default_factory=dict)
+
+
+class TraceDebugRecord(BaseModel):
+    """One trace record returned by the debug API."""
+
+    trace_id: str
+    user_id: str
+    term: str
+    stage_count: int = Field(..., ge=0)
+    stages: list[TraceStageDebug] = Field(default_factory=list)
+
+
+class TraceDebugResponse(BaseModel):
+    """Response contract for trace debug lookups."""
+
+    user_id: str
+    term: Optional[str] = None
+    trace_id: Optional[str] = None
+    traces: list[TraceDebugRecord] = Field(default_factory=list)
+
+
+class MemoryEntryDebug(BaseModel):
+    """One stored memory entry returned by the debug API."""
+
+    memory_type: str
+    key: str
+    value: Any
+
+
+class MemoryDebugResponse(BaseModel):
+    """Response contract for memory debug lookups."""
+
+    user_id: str
+    memory_type: Optional[str] = None
+    profile: dict[str, Any] = Field(default_factory=dict)
+    entries: list[MemoryEntryDebug] = Field(default_factory=list)
 
 
 class ErrorResponse(BaseModel):

@@ -29,4 +29,4 @@ This flow is implemented in [`app/agents/planner_graph.py`](/Users/tz/Desktop/co
 ## Current Gaps
 
 - refinement is deterministic and heuristic-driven rather than conversational or LLM-native.
-- Trace capture is internal only; there is no trace inspection API.
+- debug visibility routes exist, but they are currently unauthenticated and intended for local/admin use only.

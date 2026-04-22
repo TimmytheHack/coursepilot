@@ -14,6 +14,8 @@ def test_openapi_includes_day_two_routes() -> None:
 
     assert response.status_code == 200
     paths = response.json()["paths"]
+    assert "/debug/traces" in paths
+    assert "/debug/memory" in paths
     assert "/plan/generate" in paths
     assert "/plan/refine" in paths
     assert "/courses/search" in paths

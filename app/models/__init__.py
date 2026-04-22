@@ -6,10 +6,15 @@ from app.models.schemas import (
     CourseSearchResult,
     ErrorResponse,
     EvalRunResponse,
+    MemoryDebugResponse,
+    MemoryEntryDebug,
     PlanningResponse,
     PlanGenerateRequest,
     PlanRefineRequest,
     PriorPlanContext,
+    TraceDebugRecord,
+    TraceDebugResponse,
+    TraceStageDebug,
 )
 
 __all__ = [
@@ -18,8 +23,13 @@ __all__ = [
     "CourseSearchResult",
     "ErrorResponse",
     "EvalRunResponse",
+    "MemoryDebugResponse",
+    "MemoryEntryDebug",
     "PlanningResponse",
     "PlanGenerateRequest",
     "PlanRefineRequest",
     "PriorPlanContext",
+    "TraceDebugRecord",
+    "TraceDebugResponse",
+    "TraceStageDebug",
 ]

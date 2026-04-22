@@ -31,3 +31,22 @@ class TraceService:
         if trace is None:
             return None
         return deepcopy(trace)
+
+    def list_traces(
+        self,
+        *,
+        user_id: str,
+        term: str | None = None,
+        trace_id: str | None = None,
+        limit: int = 10,
+    ) -> list[dict[str, Any]]:
+        """Return matching traces with stable ordering for debug views."""
+        matching_traces = [
+            deepcopy(stored_trace)
+            for stored_trace in self._traces.values()
+            if stored_trace.get("user_id") == user_id
+            and (term is None or stored_trace.get("term") == term)
+            and (trace_id is None or stored_trace.get("trace_id") == trace_id)
+        ]
+        matching_traces.sort(key=lambda stored_trace: stored_trace["trace_id"], reverse=True)
+        return matching_traces[:limit]

@@ -46,6 +46,8 @@ Current routes:
 
 - `GET /health`
 - `GET /status`
+- `GET /debug/traces`
+- `GET /debug/memory`
 - `POST /plan/generate`
 - `POST /plan/refine`
 - `GET /courses/search`
@@ -53,10 +55,16 @@ Current routes:
 
 Current behavior:
 
+- `GET /debug/traces` and `GET /debug/memory` provide read-only development/debug visibility
 - `POST /plan/generate` is implemented and validated
 - `POST /plan/refine` is implemented with deterministic prior-plan refinement
 - `GET /courses/search` is implemented with deterministic catalog search
 - `POST /eval/run` is implemented
+
+Debug route note:
+
+- `/debug/*` routes are intentionally unauthenticated development/admin-style endpoints in the current MVP
+- they are read-only and return empty results deterministically when nothing matches
 
 ## Architecture
 
@@ -248,7 +256,7 @@ Safety boundary:
 
 ## Current Limitations
 
-- there is no dedicated API for browsing stored memory or traces
+- debug visibility routes are unauthenticated and intended only for local development/admin use in the MVP
 - the planner graph is explicit and inspectable, but it is not a real LangGraph runtime
 - sample course catalog and degree requirements are synthetic local fixtures, not a university-grounded dataset
 - evaluation coverage exists, but it is still small and oriented around the current MVP capabilities
@@ -256,7 +264,7 @@ Safety boundary:
 ## Future Work
 
 - expand offline eval cases and failure analysis
-- expose safe debug or admin access to traces and memory where appropriate
+- add auth or admin gating around debug visibility routes where appropriate
 - add stronger retrieval and richer local academic data
 - harden API error contracts further across refinement and evaluation routes
 

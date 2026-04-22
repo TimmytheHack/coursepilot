@@ -136,3 +136,11 @@ class MemoryService:
             ),
             "rejected_courses": rejected_courses,
         }
+
+    def get_debug_view(self, user_id: str, memory_type: str | None = None) -> dict[str, Any]:
+        """Return a read-only debug snapshot of stored user memory."""
+        return {
+            "user_id": user_id,
+            "profile": self.get_user_profile(user_id),
+            "entries": self.get_memories(user_id, memory_type=memory_type),
+        }
