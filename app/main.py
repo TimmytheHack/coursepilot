@@ -2,7 +2,7 @@
 
 from fastapi import FastAPI
 
-from app.api.routes_health import router as health_router
+from app.api import courses_router, eval_router, health_router, plan_router
 
 
 def create_app() -> FastAPI:
@@ -13,6 +13,9 @@ def create_app() -> FastAPI:
         description="Backend skeleton for CoursePilot.",
     )
     application.include_router(health_router)
+    application.include_router(plan_router)
+    application.include_router(courses_router)
+    application.include_router(eval_router)
     return application
 
 
