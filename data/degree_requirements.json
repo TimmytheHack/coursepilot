@@ -1,0 +1,20 @@
+{
+  "program_name": "CoursePilot Sample Computing Major",
+  "total_credits_required": 120,
+  "major_credits_required": 32,
+  "requirements": [
+    {
+      "requirement_id": "core_computing",
+      "name": "Core Computing Courses",
+      "min_count": 5,
+      "course_ids": ["CS101", "CS120", "CS201", "CS210", "CS220", "CS230", "CS310"]
+    },
+    {
+      "requirement_id": "applied_depth",
+      "name": "Applied Depth Electives",
+      "min_count": 2,
+      "categories": ["ai", "systems", "data", "security"],
+      "qualifying_course_ids": ["CS230", "CS320", "CS330", "CS340", "CS350", "CS360", "CS370", "CS380", "CS410"]
+    }
+  ]
+}
