@@ -1,1 +1,1 @@
-"""Service layer modules for the CoursePilot backend."""
+"""Service layer package for CoursePilot."""

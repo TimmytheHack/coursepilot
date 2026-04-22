@@ -1,4 +1,4 @@
-"""Route-level tests for typed placeholder API contracts."""
+"""Route-level tests for the current API contracts."""
 
 from fastapi.testclient import TestClient
 
