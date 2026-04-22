@@ -56,8 +56,9 @@ def test_generate_plan_rejects_malformed_request_body() -> None:
     assert response.status_code == 422
 
 
-def test_course_search_rejects_empty_query() -> None:
-    """Course search should reject empty query strings."""
+def test_course_search_allows_empty_query_with_stable_empty_results() -> None:
+    """Course search should handle empty query strings safely."""
     response = client.get("/courses/search", params={"q": ""})
 
-    assert response.status_code == 422
+    assert response.status_code == 200
+    assert response.json() == {"query": "", "results": []}

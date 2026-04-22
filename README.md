@@ -55,7 +55,7 @@ Current behavior:
 
 - `POST /plan/generate` is implemented and validated
 - `POST /plan/refine` is still a placeholder
-- `GET /courses/search` is still a placeholder route, even though the underlying tool exists
+- `GET /courses/search` is implemented with deterministic catalog search
 - `POST /eval/run` is implemented
 
 ## Architecture
@@ -220,7 +220,6 @@ Safety boundary:
 ## Current Limitations
 
 - `POST /plan/refine` is still a placeholder
-- `GET /courses/search` is still a placeholder route
 - there is no dedicated API for browsing stored memory or traces
 - the planner graph is explicit and inspectable, but it is not a real LangGraph runtime
 - sample course catalog and degree requirements are synthetic local fixtures, not a university-grounded dataset
@@ -229,7 +228,6 @@ Safety boundary:
 ## Future Work
 
 - implement real `plan/refine` behavior
-- wire the real course search tool into `GET /courses/search`
 - expand offline eval cases and failure analysis
 - expose safe debug or admin access to traces and memory where appropriate
 - add stronger retrieval and richer local academic data

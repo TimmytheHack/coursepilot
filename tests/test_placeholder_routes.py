@@ -67,15 +67,43 @@ def test_refine_plan_returns_typed_placeholder_response() -> None:
     assert payload["plans"][0]["label"] == "refined-placeholder"
 
 
-def test_course_search_returns_typed_placeholder_response() -> None:
-    """Course search route should return the expected placeholder schema."""
-    response = client.get("/courses/search", params={"q": "ai"})
+def test_course_search_returns_ranked_results() -> None:
+    """Course search route should return deterministic ranked results."""
+    response = client.get("/courses/search", params={"q": "operating systems"})
 
     payload = response.json()
 
     assert response.status_code == 200
-    assert payload["query"] == "ai"
-    assert payload["results"][0]["course_id"] == "CS000"
+    assert payload["query"] == "operating systems"
+    assert payload["results"][0]["course_id"] == "CS320"
+    assert payload["results"][0]["department"] == "CS"
+    assert payload["results"][0]["credits"] == 4
+
+
+def test_course_search_returns_empty_results_for_empty_query() -> None:
+    """Course search should handle empty queries safely and deterministically."""
+    response = client.get("/courses/search", params={"q": ""})
+
+    assert response.status_code == 200
+    assert response.json() == {"query": "", "results": []}
+
+
+def test_course_search_returns_empty_results_for_no_match_query() -> None:
+    """Course search should return an empty list when nothing matches."""
+    response = client.get("/courses/search", params={"q": "ancient pottery"})
+
+    assert response.status_code == 200
+    assert response.json() == {"query": "ancient pottery", "results": []}
+
+
+def test_course_search_returns_fixture_catalog_match() -> None:
+    """Course search should search over the current catalog fixture data."""
+    response = client.get("/courses/search", params={"q": "visualization"})
+
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert [result["course_id"] for result in payload["results"]] == ["CS380"]
 
 
 def test_eval_run_returns_eval_summary_response() -> None:

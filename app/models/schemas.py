@@ -48,11 +48,17 @@ class PlanningResponse(BaseModel):
 
 
 class CourseSearchResult(BaseModel):
-    """Placeholder course search result object."""
+    """Structured course search result object."""
 
     course_id: str
     title: str
-    match_reason: str
+    department: str
+    credits: int = Field(..., ge=0)
+    description: str
+    terms_offered: list[str]
+    categories: list[str]
+    career_tags: list[str]
+    rating_summary: str
 
 
 class CourseSearchResponse(BaseModel):

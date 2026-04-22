@@ -29,6 +29,4 @@ This flow is implemented in [`app/agents/planner_graph.py`](/Users/tz/Desktop/co
 ## Current Gaps
 
 - `POST /plan/refine` is still a placeholder.
-- `GET /courses/search` still exposes a placeholder route even though the
-  deterministic tool exists.
 - Trace capture is internal only; there is no trace inspection API.
