@@ -1,0 +1,416 @@
+[
+  {
+    "course_id": "CS101",
+    "title": "Introduction to Programming",
+    "department": "CS",
+    "credits": 4,
+    "description": "Foundational programming with Python, control flow, functions, and debugging.",
+    "terms_offered": ["Fall", "Spring"],
+    "prerequisites": [],
+    "corequisites": [],
+    "categories": ["software", "foundations"],
+    "difficulty": 2,
+    "workload": 2,
+    "time_slots": [
+      {
+        "term": "Fall",
+        "days": ["Mon", "Wed"],
+        "start": "09:00",
+        "end": "10:15"
+      }
+    ],
+    "career_tags": ["software_engineering"],
+    "rating_summary": "A practical starting point for students new to programming."
+  },
+  {
+    "course_id": "CS120",
+    "title": "Discrete Structures",
+    "department": "CS",
+    "credits": 4,
+    "description": "Logic, sets, combinatorics, proofs, and graph fundamentals for computer science.",
+    "terms_offered": ["Fall", "Spring"],
+    "prerequisites": [],
+    "corequisites": [],
+    "categories": ["theory", "foundations"],
+    "difficulty": 3,
+    "workload": 3,
+    "time_slots": [
+      {
+        "term": "Spring",
+        "days": ["Tue", "Thu"],
+        "start": "11:00",
+        "end": "12:15"
+      }
+    ],
+    "career_tags": ["algorithmic_thinking"],
+    "rating_summary": "Important for later theory-heavy work."
+  },
+  {
+    "course_id": "CS140",
+    "title": "Data and Society",
+    "department": "CS",
+    "credits": 4,
+    "description": "Ethics, policy, and social impact of data systems and automated decision making.",
+    "terms_offered": ["Fall"],
+    "prerequisites": [],
+    "corequisites": [],
+    "categories": ["data", "policy"],
+    "difficulty": 2,
+    "workload": 2,
+    "time_slots": [
+      {
+        "term": "Fall",
+        "days": ["Tue", "Thu"],
+        "start": "13:00",
+        "end": "14:15"
+      }
+    ],
+    "career_tags": ["responsible_ai", "product"],
+    "rating_summary": "Discussion-oriented course for students interested in data ethics."
+  },
+  {
+    "course_id": "CS201",
+    "title": "Data Structures",
+    "department": "CS",
+    "credits": 4,
+    "description": "Arrays, linked lists, trees, heaps, hashing, and implementation tradeoffs.",
+    "terms_offered": ["Fall", "Spring"],
+    "prerequisites": ["CS101"],
+    "corequisites": [],
+    "categories": ["software", "data"],
+    "difficulty": 3,
+    "workload": 3,
+    "time_slots": [
+      {
+        "term": "Fall",
+        "days": ["Mon", "Wed"],
+        "start": "10:30",
+        "end": "11:45"
+      }
+    ],
+    "career_tags": ["software_engineering", "interview_foundation"],
+    "rating_summary": "A core implementation class with broad downstream value."
+  },
+  {
+    "course_id": "CS210",
+    "title": "Computer Systems",
+    "department": "CS",
+    "credits": 4,
+    "description": "Processes, memory, concurrency, and performance fundamentals for modern systems.",
+    "terms_offered": ["Fall", "Spring"],
+    "prerequisites": ["CS101"],
+    "corequisites": [],
+    "categories": ["systems"],
+    "difficulty": 4,
+    "workload": 4,
+    "time_slots": [
+      {
+        "term": "Spring",
+        "days": ["Mon", "Wed"],
+        "start": "14:00",
+        "end": "15:15"
+      }
+    ],
+    "career_tags": ["systems_engineering", "performance"],
+    "rating_summary": "Demanding but valuable for lower-level computing work."
+  },
+  {
+    "course_id": "CS220",
+    "title": "Web Application Engineering",
+    "department": "CS",
+    "credits": 4,
+    "description": "Full-stack application design, APIs, persistence, and testing practices.",
+    "terms_offered": ["Fall", "Spring"],
+    "prerequisites": ["CS101"],
+    "corequisites": [],
+    "categories": ["software", "product"],
+    "difficulty": 3,
+    "workload": 3,
+    "time_slots": [
+      {
+        "term": "Fall",
+        "days": ["Tue", "Thu"],
+        "start": "15:30",
+        "end": "16:45"
+      }
+    ],
+    "career_tags": ["software_engineering", "product"],
+    "rating_summary": "Project-oriented course focused on shipping usable applications."
+  },
+  {
+    "course_id": "CS230",
+    "title": "Data Management",
+    "department": "CS",
+    "credits": 4,
+    "description": "Relational modeling, SQL, indexing, transactions, and data system design.",
+    "terms_offered": ["Fall", "Spring"],
+    "prerequisites": ["CS201"],
+    "corequisites": [],
+    "categories": ["data", "systems"],
+    "difficulty": 3,
+    "workload": 3,
+    "time_slots": [
+      {
+        "term": "Spring",
+        "days": ["Tue", "Thu"],
+        "start": "09:30",
+        "end": "10:45"
+      }
+    ],
+    "career_tags": ["data_engineering", "backend"],
+    "rating_summary": "A practical database course with immediate industry relevance."
+  },
+  {
+    "course_id": "CS240",
+    "title": "Computing Probability",
+    "department": "CS",
+    "credits": 4,
+    "description": "Probability, random variables, estimation, and uncertainty in computing systems.",
+    "terms_offered": ["Spring"],
+    "prerequisites": ["CS120"],
+    "corequisites": [],
+    "categories": ["data", "theory"],
+    "difficulty": 3,
+    "workload": 3,
+    "time_slots": [
+      {
+        "term": "Spring",
+        "days": ["Mon", "Wed"],
+        "start": "12:30",
+        "end": "13:45"
+      }
+    ],
+    "career_tags": ["machine_learning_foundation", "data_science"],
+    "rating_summary": "Useful mathematical preparation for AI and data work."
+  },
+  {
+    "course_id": "CS310",
+    "title": "Algorithms",
+    "department": "CS",
+    "credits": 4,
+    "description": "Algorithm design, asymptotic analysis, graph methods, and dynamic programming.",
+    "terms_offered": ["Fall", "Spring"],
+    "prerequisites": ["CS201", "CS120"],
+    "corequisites": [],
+    "categories": ["theory", "algorithms"],
+    "difficulty": 4,
+    "workload": 4,
+    "time_slots": [
+      {
+        "term": "Fall",
+        "days": ["Mon", "Wed"],
+        "start": "13:00",
+        "end": "14:15"
+      }
+    ],
+    "career_tags": ["interview_foundation", "research"],
+    "rating_summary": "A demanding core theory course with strong long-term payoff."
+  },
+  {
+    "course_id": "CS320",
+    "title": "Operating Systems",
+    "department": "CS",
+    "credits": 4,
+    "description": "Threads, scheduling, virtualization, filesystems, and systems performance.",
+    "terms_offered": ["Fall"],
+    "prerequisites": ["CS210"],
+    "corequisites": [],
+    "categories": ["systems"],
+    "difficulty": 4,
+    "workload": 4,
+    "time_slots": [
+      {
+        "term": "Fall",
+        "days": ["Tue", "Thu"],
+        "start": "11:00",
+        "end": "12:15"
+      }
+    ],
+    "career_tags": ["systems_engineering", "infrastructure"],
+    "rating_summary": "A classic systems course with substantial implementation work."
+  },
+  {
+    "course_id": "CS330",
+    "title": "Machine Learning Foundations",
+    "department": "CS",
+    "credits": 4,
+    "description": "Supervised learning, optimization basics, model evaluation, and bias-variance tradeoffs.",
+    "terms_offered": ["Fall", "Spring"],
+    "prerequisites": ["CS201", "CS240"],
+    "corequisites": [],
+    "categories": ["ai", "data"],
+    "difficulty": 4,
+    "workload": 4,
+    "time_slots": [
+      {
+        "term": "Spring",
+        "days": ["Mon", "Wed"],
+        "start": "15:30",
+        "end": "16:45"
+      }
+    ],
+    "career_tags": ["machine_learning", "data_science"],
+    "rating_summary": "A rigorous introduction to modern machine learning methods."
+  },
+  {
+    "course_id": "CS340",
+    "title": "Applied Machine Learning",
+    "department": "CS",
+    "credits": 4,
+    "description": "Applied machine learning for production systems with feature pipelines and experiment tracking.",
+    "terms_offered": ["Fall"],
+    "prerequisites": ["CS330"],
+    "corequisites": [],
+    "categories": ["ai", "product"],
+    "difficulty": 3,
+    "workload": 4,
+    "time_slots": [
+      {
+        "term": "Fall",
+        "days": ["Tue", "Thu"],
+        "start": "09:30",
+        "end": "10:45"
+      }
+    ],
+    "career_tags": ["machine_learning", "applied_ai"],
+    "rating_summary": "Strong fit for students who want practical AI application work."
+  },
+  {
+    "course_id": "CS350",
+    "title": "Natural Language Applications",
+    "department": "CS",
+    "credits": 4,
+    "description": "Text classification, retrieval, and language model applications for real products.",
+    "terms_offered": ["Spring"],
+    "prerequisites": ["CS330"],
+    "corequisites": [],
+    "categories": ["ai", "product"],
+    "difficulty": 3,
+    "workload": 3,
+    "time_slots": [
+      {
+        "term": "Spring",
+        "days": ["Tue", "Thu"],
+        "start": "14:00",
+        "end": "15:15"
+      }
+    ],
+    "career_tags": ["nlp", "applied_ai"],
+    "rating_summary": "A product-facing AI elective centered on language applications."
+  },
+  {
+    "course_id": "CS360",
+    "title": "Computer Vision Studio",
+    "department": "CS",
+    "credits": 4,
+    "description": "Image pipelines, detection, segmentation, and hands-on vision application projects.",
+    "terms_offered": ["Fall"],
+    "prerequisites": ["CS330"],
+    "corequisites": [],
+    "categories": ["ai", "product"],
+    "difficulty": 3,
+    "workload": 4,
+    "time_slots": [
+      {
+        "term": "Fall",
+        "days": ["Mon", "Wed"],
+        "start": "16:00",
+        "end": "17:15"
+      }
+    ],
+    "career_tags": ["computer_vision", "applied_ai"],
+    "rating_summary": "Project-heavy AI elective focused on visual applications."
+  },
+  {
+    "course_id": "CS370",
+    "title": "Distributed Systems",
+    "department": "CS",
+    "credits": 4,
+    "description": "Replication, consensus, reliability, and service design for distributed systems.",
+    "terms_offered": ["Spring"],
+    "prerequisites": ["CS320"],
+    "corequisites": [],
+    "categories": ["systems"],
+    "difficulty": 4,
+    "workload": 4,
+    "time_slots": [
+      {
+        "term": "Spring",
+        "days": ["Tue", "Thu"],
+        "start": "16:00",
+        "end": "17:15"
+      }
+    ],
+    "career_tags": ["distributed_systems", "infrastructure"],
+    "rating_summary": "A challenging systems elective with strong backend relevance."
+  },
+  {
+    "course_id": "CS380",
+    "title": "Data Visualization",
+    "department": "CS",
+    "credits": 4,
+    "description": "Interactive visualization, visual encoding, dashboards, and storytelling with data.",
+    "terms_offered": ["Fall", "Spring"],
+    "prerequisites": ["CS201"],
+    "corequisites": [],
+    "categories": ["data", "product"],
+    "difficulty": 2,
+    "workload": 3,
+    "time_slots": [
+      {
+        "term": "Spring",
+        "days": ["Mon", "Wed"],
+        "start": "11:00",
+        "end": "12:15"
+      }
+    ],
+    "career_tags": ["analytics", "product"],
+    "rating_summary": "A lighter applied data elective with visible project output."
+  },
+  {
+    "course_id": "CS390",
+    "title": "Human-Centered Product Design",
+    "department": "CS",
+    "credits": 4,
+    "description": "User research, prototyping, and iterative design for software products.",
+    "terms_offered": ["Spring"],
+    "prerequisites": ["CS220"],
+    "corequisites": [],
+    "categories": ["product"],
+    "difficulty": 2,
+    "workload": 3,
+    "time_slots": [
+      {
+        "term": "Spring",
+        "days": ["Tue", "Thu"],
+        "start": "12:30",
+        "end": "13:45"
+      }
+    ],
+    "career_tags": ["product", "ux"],
+    "rating_summary": "A collaborative course for students interested in product thinking."
+  },
+  {
+    "course_id": "CS410",
+    "title": "Secure Software Engineering",
+    "department": "CS",
+    "credits": 4,
+    "description": "Threat modeling, application security, secure coding, and deployment hardening.",
+    "terms_offered": ["Fall"],
+    "prerequisites": ["CS220", "CS210"],
+    "corequisites": [],
+    "categories": ["security", "software"],
+    "difficulty": 3,
+    "workload": 3,
+    "time_slots": [
+      {
+        "term": "Fall",
+        "days": ["Mon", "Wed"],
+        "start": "12:30",
+        "end": "13:45"
+      }
+    ],
+    "career_tags": ["security_engineering", "backend"],
+    "rating_summary": "A practical elective focused on shipping safer software."
+  }
+]
