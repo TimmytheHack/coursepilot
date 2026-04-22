@@ -49,22 +49,34 @@ def test_generate_plan_returns_typed_placeholder_response() -> None:
     assert payload["summary"].startswith("Generated 3 validated plan option")
 
 
-def test_refine_plan_returns_typed_placeholder_response() -> None:
-    """Plan refinement route should return the expected placeholder schema."""
+def test_refine_plan_returns_validated_refined_response() -> None:
+    """Plan refinement route should return one validated deterministic revision."""
     response = client.post(
         "/plan/refine",
         json={
             "user_id": "u_001",
-            "previous_plan_id": "plan_a",
-            "query": "Make this lighter.",
+            "prior_plan": {
+                "plan_id": "plan_ambitious",
+                "query": "I want an AI applications semester.",
+                "term": "Fall 2026",
+                "courses": ["CS210", "CS310", "CS340"],
+                "completed_courses": ["CS101", "CS120", "CS201", "CS240", "CS330"],
+                "preferred_directions": ["ai", "product"],
+                "max_courses": 3,
+                "max_credits": 12,
+            },
+            "query": "Keep CS340 but replace CS310 with something lighter.",
         },
     )
 
     payload = response.json()
 
     assert response.status_code == 200
-    assert payload["trace_id"] == "placeholder-refine-u_001"
-    assert payload["plans"][0]["label"] == "refined-placeholder"
+    assert payload["trace_id"] == "refine-u_001-fall-2026"
+    assert len(payload["plans"]) == 1
+    assert payload["plans"][0]["label"] == "refined"
+    assert "CS340" in payload["plans"][0]["courses"]
+    assert "CS310" not in payload["plans"][0]["courses"]
 
 
 def test_course_search_returns_ranked_results() -> None:

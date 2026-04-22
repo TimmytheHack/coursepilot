@@ -21,6 +21,8 @@ class PlannerState(TypedDict, total=False):
     course_catalog: list[dict[str, Any]]
     course_catalog_by_id: dict[str, dict[str, Any]]
     degree_requirements: dict[str, Any]
+    required_course_ids: list[str]
+    excluded_course_ids: list[str]
     retrieved_courses: list[dict[str, Any]]
     candidate_plans: list[dict[str, Any]]
     validation_results: list[dict[str, Any]]

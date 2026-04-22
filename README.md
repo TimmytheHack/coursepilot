@@ -54,7 +54,7 @@ Current routes:
 Current behavior:
 
 - `POST /plan/generate` is implemented and validated
-- `POST /plan/refine` is still a placeholder
+- `POST /plan/refine` is implemented with deterministic prior-plan refinement
 - `GET /courses/search` is implemented with deterministic catalog search
 - `POST /eval/run` is implemented
 
@@ -99,6 +99,7 @@ coursepilot/
 │  │  ├─ llm_service.py
 │  │  ├─ memory_service.py
 │  │  ├─ planning_service.py
+│  │  ├─ refinement_service.py
 │  │  └─ trace_service.py
 │  ├─ tools/
 │  │  ├─ catalog.py
@@ -124,6 +125,7 @@ Major modules and responsibilities:
 - `app/agents`: the explicit planner graph, node flow, and prompt builders
 - `app/tools`: deterministic domain logic used for search and validation
 - `app/services/planning_service.py`: stable service entrypoint over the planner graph
+- `app/services/refinement_service.py`: deterministic prior-plan refinement over the planner
 - `app/services/memory_service.py`: SQLite-backed structured user context
 - `app/services/llm_service.py`: optional Anthropic integration with strict structured parsing
 - `app/services/trace_service.py`: internal stage trace capture for debugging
@@ -246,7 +248,6 @@ Safety boundary:
 
 ## Current Limitations
 
-- `POST /plan/refine` is still a placeholder
 - there is no dedicated API for browsing stored memory or traces
 - the planner graph is explicit and inspectable, but it is not a real LangGraph runtime
 - sample course catalog and degree requirements are synthetic local fixtures, not a university-grounded dataset
@@ -254,11 +255,10 @@ Safety boundary:
 
 ## Future Work
 
-- implement real `plan/refine` behavior
 - expand offline eval cases and failure analysis
 - expose safe debug or admin access to traces and memory where appropriate
 - add stronger retrieval and richer local academic data
-- harden API error contracts further across all placeholder routes
+- harden API error contracts further across refinement and evaluation routes
 
 ## Design Notes
 

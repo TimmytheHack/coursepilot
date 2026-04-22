@@ -224,6 +224,16 @@ def _degree_requirements_from_state(state: PlannerState) -> dict[str, Any]:
     return state.get("degree_requirements") or _load_degree_requirements()
 
 
+def _required_course_ids_from_state(state: PlannerState) -> list[str]:
+    """Return the active required course identifiers for one planner run."""
+    return list(state.get("required_course_ids", []))
+
+
+def _excluded_course_ids_from_state(state: PlannerState) -> list[str]:
+    """Return the active excluded course identifiers for one planner run."""
+    return list(state.get("excluded_course_ids", []))
+
+
 def _build_validation_facts(result: dict[str, Any]) -> list[str]:
     """Build concise public validation facts for one validated plan."""
     workload_summary = result["workload_summary"]
@@ -300,6 +310,8 @@ def load_user_context(
             "max_courses": resolved_request.max_courses,
             "max_credits": resolved_request.max_credits,
             "avoid_morning_classes": resolved_request.avoid_morning_classes,
+            "required_course_ids": _required_course_ids_from_state(state),
+            "excluded_course_ids": _excluded_course_ids_from_state(state),
             "user_profile": user_context["profile"],
             "trace": [],
             "messages": ["load_user_context"],
@@ -314,6 +326,8 @@ def load_user_context(
             "completed_course_count": len(resolved_request.completed_courses),
             "stored_preference_count": len(resolved_request.preferred_directions),
             "profile_keys": sorted(user_context["profile"].keys()),
+            "required_course_ids": _required_course_ids_from_state(updated_state),
+            "excluded_course_ids": _excluded_course_ids_from_state(updated_state),
         },
     )
 
@@ -341,6 +355,7 @@ def retrieve_courses(state: PlannerState) -> PlannerState:
     """Retrieve eligible ranked courses for the target term and preferences."""
     course_catalog = _catalog_from_state(state)
     course_catalog_by_id = _catalog_by_id_from_state(state)
+    excluded_course_ids = set(_excluded_course_ids_from_state(state))
 
     ranked_courses = course_search_in_catalog(
         state["query"],
@@ -375,6 +390,8 @@ def retrieve_courses(state: PlannerState) -> PlannerState:
         course_id = course["course_id"]
         if course_id in state["completed_courses"]:
             continue
+        if course_id in excluded_course_ids:
+            continue
         if state["season"] not in course.get("terms_offered", []):
             continue
         if state["avoid_morning_classes"] and _course_is_morning(course, state["season"]):
@@ -399,6 +416,7 @@ def retrieve_courses(state: PlannerState) -> PlannerState:
         {
             "retrieved_count": len(retrieved_courses),
             "course_ids": [item["course"]["course_id"] for item in retrieved_courses[:8]],
+            "excluded_course_ids": sorted(excluded_course_ids),
         },
     )
 
@@ -409,9 +427,33 @@ def generate_candidate_plans(
 ) -> PlannerState:
     """Generate raw variant candidates from retrieved courses."""
     course_catalog_by_id = _catalog_by_id_from_state(state)
+    required_course_ids = _required_course_ids_from_state(state)
     candidate_plans: list[dict[str, Any]] = []
     available_courses = _available_courses_for_llm(state["retrieved_courses"])
     llm_candidates_by_label: dict[str, dict[str, Any]] = {}
+    available_course_ids = {
+        ranked_course["course"]["course_id"]
+        for ranked_course in state["retrieved_courses"]
+    }
+    missing_required_course_ids = sorted(course_id for course_id in required_course_ids if course_id not in available_course_ids)
+
+    if missing_required_course_ids:
+        updated_state = dict(state)
+        updated_state["candidate_plans"] = []
+        updated_state["messages"] = state["messages"] + ["generate_candidate_plans"]
+        updated_state["error"] = (
+            "No valid plans could be generated from the current request constraints."
+        )
+        return _record_trace(
+            updated_state,
+            "generate_candidate_plans",
+            {
+                "variant_labels": [],
+                "sources": {},
+                "course_ids": {},
+                "missing_required_course_ids": missing_required_course_ids,
+            },
+        )
 
     if llm_service is not None:
         llm_candidates = llm_service.suggest_candidate_plans(
@@ -436,16 +478,46 @@ def generate_candidate_plans(
     for variant in ("balanced", "ambitious", "conservative"):
         llm_candidate = llm_candidates_by_label.get(variant)
         if llm_candidate is not None:
-            candidate_plans.append(llm_candidate)
+            if all(course_id in llm_candidate["courses"] for course_id in required_course_ids):
+                candidate_plans.append(llm_candidate)
             continue
 
         selected_courses: list[str] = []
         total_credits = 0
-        target_count = _target_course_count(variant, state["max_courses"])
+        target_count = max(_target_course_count(variant, state["max_courses"]), len(required_course_ids))
 
-        for ranked_course in sorted(state["retrieved_courses"], key=lambda item: _variant_sort_key(variant, item)):
+        ranked_for_variant = sorted(state["retrieved_courses"], key=lambda item: _variant_sort_key(variant, item))
+        required_ranked_courses = [
+            ranked_course
+            for ranked_course in ranked_for_variant
+            if ranked_course["course"]["course_id"] in required_course_ids
+        ]
+        selection_invalid = False
+
+        for ranked_course in required_ranked_courses:
             course = ranked_course["course"]
             course_id = course["course_id"]
+            course_credits = int(course["credits"])
+            if total_credits + course_credits > state["max_credits"]:
+                selection_invalid = True
+                break
+
+            tentative_courses = selected_courses + [course_id]
+            if schedule_conflict_checker(tentative_courses, state["season"], course_catalog_by_id):
+                selection_invalid = True
+                break
+
+            selected_courses.append(course_id)
+            total_credits += course_credits
+
+        if selection_invalid:
+            continue
+
+        for ranked_course in ranked_for_variant:
+            course = ranked_course["course"]
+            course_id = course["course_id"]
+            if course_id in selected_courses:
+                continue
             course_credits = int(course["credits"])
             if total_credits + course_credits > state["max_credits"]:
                 continue
@@ -480,6 +552,7 @@ def generate_candidate_plans(
             "variant_labels": [plan["label"] for plan in candidate_plans],
             "sources": {plan["label"]: plan["source"] for plan in candidate_plans},
             "course_ids": {plan["label"]: plan["courses"] for plan in candidate_plans},
+            "required_course_ids": required_course_ids,
         },
     )
 
@@ -542,6 +615,18 @@ def validate_plans(state: PlannerState) -> PlannerState:
 
 def revise_if_needed(state: PlannerState) -> PlannerState:
     """Drop invalid or duplicate plans after validation."""
+    if state.get("error"):
+        updated_state = dict(state)
+        updated_state["messages"] = state["messages"] + ["revise_if_needed"]
+        return _record_trace(
+            updated_state,
+            "revise_if_needed",
+            {
+                "kept_labels": [],
+                "error": updated_state.get("error"),
+            },
+        )
+
     seen_course_sets: set[tuple[str, ...]] = set()
     revised_results: list[dict[str, Any]] = []
 
@@ -636,6 +721,8 @@ def run_planner_graph(
     course_catalog: list[dict[str, Any]] | None = None,
     course_catalog_by_id: dict[str, dict[str, Any]] | None = None,
     degree_requirements: dict[str, Any] | None = None,
+    required_course_ids: list[str] | None = None,
+    excluded_course_ids: list[str] | None = None,
 ) -> PlanningResponse:
     """Execute the deterministic planner graph end to end."""
     resolved_memory_service = memory_service or MemoryService()
@@ -648,6 +735,10 @@ def run_planner_graph(
         state["course_catalog_by_id"] = course_catalog_by_id
     if degree_requirements is not None:
         state["degree_requirements"] = degree_requirements
+    if required_course_ids is not None:
+        state["required_course_ids"] = required_course_ids
+    if excluded_course_ids is not None:
+        state["excluded_course_ids"] = excluded_course_ids
     state = load_user_context(state, request, resolved_memory_service)
     resolved_trace_service.start_trace(state["trace_id"], user_id=state["user_id"], term=state["term"])
     resolved_trace_service.record_stage(state["trace_id"], "load_user_context", state["trace"][-1]["details"])

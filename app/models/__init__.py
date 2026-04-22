@@ -9,6 +9,7 @@ from app.models.schemas import (
     PlanningResponse,
     PlanGenerateRequest,
     PlanRefineRequest,
+    PriorPlanContext,
 )
 
 __all__ = [
@@ -20,4 +21,5 @@ __all__ = [
     "PlanningResponse",
     "PlanGenerateRequest",
     "PlanRefineRequest",
+    "PriorPlanContext",
 ]

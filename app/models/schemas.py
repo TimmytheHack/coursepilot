@@ -18,11 +18,25 @@ class PlanGenerateRequest(BaseModel):
     avoid_morning_classes: bool = False
 
 
+class PriorPlanContext(BaseModel):
+    """Minimal explicit context for deterministic plan refinement."""
+
+    plan_id: str = Field(..., min_length=1)
+    query: str = Field(..., min_length=1)
+    term: str = Field(..., min_length=1)
+    courses: list[str] = Field(..., min_length=1)
+    completed_courses: list[str] = Field(default_factory=list)
+    preferred_directions: list[str] = Field(default_factory=list)
+    max_courses: int = Field(3, ge=1, le=6)
+    max_credits: int = Field(16, ge=1)
+    avoid_morning_classes: bool = False
+
+
 class PlanRefineRequest(BaseModel):
     """Request payload for plan refinement."""
 
     user_id: str = Field(..., min_length=1)
-    previous_plan_id: str = Field(..., min_length=1)
+    prior_plan: PriorPlanContext
     query: str = Field(..., min_length=1)
 
 

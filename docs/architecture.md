@@ -28,5 +28,5 @@ This flow is implemented in [`app/agents/planner_graph.py`](/Users/tz/Desktop/co
 
 ## Current Gaps
 
-- `POST /plan/refine` is still a placeholder.
+- refinement is deterministic and heuristic-driven rather than conversational or LLM-native.
 - Trace capture is internal only; there is no trace inspection API.
