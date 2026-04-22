@@ -10,7 +10,7 @@ from typing import Any
 from app.eval.metrics import summarize_eval_results
 from app.models.schemas import EvalRunResponse, PlanGenerateRequest, PlanningResponse
 from app.services.planning_service import generate_semester_plan
-from app.tools.catalog import load_course_catalog_by_id
+from app.tools.catalog import DEFAULT_CATALOG_ID, load_catalog, load_catalog_by_id
 from app.tools.graduation_checker import graduation_checker
 from app.tools.prerequisite_checker import prerequisite_checker
 from app.tools.schedule_conflict_checker import schedule_conflict_checker
@@ -39,10 +39,20 @@ def _report_path(run_id: str, reports_dir: Path | None = None) -> Path:
     return directory / f"{run_id}.json"
 
 
-def _evaluate_case(case: dict[str, Any], course_catalog: dict[str, dict[str, Any]], degree_requirements: dict[str, Any]) -> dict[str, Any]:
+def _evaluate_case(
+    case: dict[str, Any],
+    course_catalog: list[dict[str, Any]],
+    course_catalog_by_id: dict[str, dict[str, Any]],
+    degree_requirements: dict[str, Any],
+) -> dict[str, Any]:
     """Execute one eval case against the current planner."""
     request_model = PlanGenerateRequest(**case["request"])
-    response = generate_semester_plan(request_model)
+    response = generate_semester_plan(
+        request_model,
+        course_catalog=course_catalog,
+        course_catalog_by_id=course_catalog_by_id,
+        degree_requirements=degree_requirements,
+    )
     response = PlanningResponse.model_validate(response)
 
     prerequisite_valid_plans = 0
@@ -53,9 +63,9 @@ def _evaluate_case(case: dict[str, Any], course_catalog: dict[str, dict[str, Any
         prerequisite_results = prerequisite_checker(
             request_model.completed_courses,
             plan.courses,
-            course_catalog,
+            course_catalog_by_id,
         )
-        conflicts = schedule_conflict_checker(plan.courses, request_model.term.split(" ", 1)[0], course_catalog)
+        conflicts = schedule_conflict_checker(plan.courses, request_model.term.split(" ", 1)[0], course_catalog_by_id)
         graduation_summary = graduation_checker(
             request_model.completed_courses,
             plan.courses,
@@ -113,21 +123,24 @@ def run_eval_suite(
     *,
     cases_path: Path | None = None,
     reports_dir: Path | None = None,
+    catalog_id: str = DEFAULT_CATALOG_ID,
 ) -> EvalRunResponse:
     """Run the offline evaluation suite and write a machine-readable report."""
     run_id = f"eval-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
-    course_catalog = load_course_catalog_by_id()
+    course_catalog = load_catalog(catalog_id)
+    course_catalog_by_id = load_catalog_by_id(catalog_id)
     degree_requirements = json.loads(
         (Path(__file__).resolve().parents[2] / "data" / "degree_requirements.json").read_text(encoding="utf-8")
     )
     case_results = [
-        _evaluate_case(case, course_catalog, degree_requirements)
+        _evaluate_case(case, course_catalog, course_catalog_by_id, degree_requirements)
         for case in _load_cases(cases_path)
     ]
     metrics = summarize_eval_results(case_results)
     report = {
         "run_id": run_id,
         "generated_at": datetime.now(timezone.utc).isoformat(),
+        "catalog_id": catalog_id,
         "metrics": metrics,
         "cases": case_results,
     }

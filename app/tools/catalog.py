@@ -1,4 +1,4 @@
-"""Shared helpers for reading the local sample course catalog."""
+"""Shared helpers for reading CoursePilot catalog fixtures."""
 
 from __future__ import annotations
 
@@ -10,6 +10,8 @@ from typing import Any
 
 CATALOG_PATH = Path(__file__).resolve().parents[2] / "data" / "courses.json"
 SAMPLE_IMPORT_CATALOG_PATH = Path(__file__).resolve().parents[2] / "data" / "imports" / "bu_sample_courses.json"
+DEFAULT_CATALOG_ID = "default"
+BU_SAMPLE_CATALOG_ID = "bu_sample"
 REQUIRED_COURSE_FIELDS = {
     "course_id",
     "title",
@@ -134,3 +136,21 @@ def load_import_sample_catalog_by_id(path: str | None = None) -> dict[str, dict[
     """Index the normalized sample import catalog by course identifier."""
     catalog = load_import_sample_catalog(path)
     return {course["course_id"]: course for course in catalog}
+
+
+def load_catalog(catalog_id: str = DEFAULT_CATALOG_ID) -> list[dict[str, Any]]:
+    """Load one of the supported catalog fixtures by identifier."""
+    if catalog_id == DEFAULT_CATALOG_ID:
+        return load_course_catalog()
+    if catalog_id == BU_SAMPLE_CATALOG_ID:
+        return load_import_sample_catalog()
+    raise ValueError(f"Unsupported catalog ID: {catalog_id}")
+
+
+def load_catalog_by_id(catalog_id: str = DEFAULT_CATALOG_ID) -> dict[str, dict[str, Any]]:
+    """Index one of the supported catalog fixtures by identifier."""
+    if catalog_id == DEFAULT_CATALOG_ID:
+        return load_course_catalog_by_id()
+    if catalog_id == BU_SAMPLE_CATALOG_ID:
+        return load_import_sample_catalog_by_id()
+    raise ValueError(f"Unsupported catalog ID: {catalog_id}")

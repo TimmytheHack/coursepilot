@@ -13,7 +13,7 @@ from app.services.llm_service import LLMService
 from app.services.memory_service import MemoryService
 from app.services.trace_service import TraceService
 from app.tools.catalog import load_course_catalog, load_course_catalog_by_id
-from app.tools.course_search import course_search
+from app.tools.course_search import course_search_in_catalog
 from app.tools.graduation_checker import graduation_checker
 from app.tools.prerequisite_checker import prerequisite_checker
 from app.tools.schedule_conflict_checker import schedule_conflict_checker
@@ -198,13 +198,30 @@ def _build_risks(
     return risks
 
 
-def _validate_completed_courses(completed_courses: list[str]) -> None:
+def _validate_completed_courses(
+    completed_courses: list[str],
+    course_catalog_by_id: dict[str, dict[str, Any]],
+) -> None:
     """Fail loudly when a request references unknown completed course IDs."""
-    course_catalog_by_id = load_course_catalog_by_id()
     missing_course_ids = [course_id for course_id in completed_courses if course_id not in course_catalog_by_id]
     if missing_course_ids:
         missing_list = ", ".join(sorted(set(missing_course_ids)))
         raise ValueError(f"Unknown completed course IDs: {missing_list}")
+
+
+def _catalog_from_state(state: PlannerState) -> list[dict[str, Any]]:
+    """Return the active catalog for one planner run."""
+    return state.get("course_catalog") or load_course_catalog()
+
+
+def _catalog_by_id_from_state(state: PlannerState) -> dict[str, dict[str, Any]]:
+    """Return the active catalog index for one planner run."""
+    return state.get("course_catalog_by_id") or load_course_catalog_by_id()
+
+
+def _degree_requirements_from_state(state: PlannerState) -> dict[str, Any]:
+    """Return the active degree requirements for one planner run."""
+    return state.get("degree_requirements") or _load_degree_requirements()
 
 
 def _build_validation_facts(result: dict[str, Any]) -> list[str]:
@@ -269,7 +286,8 @@ def load_user_context(
             "preferred_directions": preferred_directions,
         }
     )
-    _validate_completed_courses(resolved_request.completed_courses)
+    course_catalog_by_id = _catalog_by_id_from_state(state)
+    _validate_completed_courses(resolved_request.completed_courses, course_catalog_by_id)
 
     updated_state = dict(state)
     updated_state.update(
@@ -321,12 +339,22 @@ def understand_intent(state: PlannerState) -> PlannerState:
 
 def retrieve_courses(state: PlannerState) -> PlannerState:
     """Retrieve eligible ranked courses for the target term and preferences."""
-    course_catalog = load_course_catalog()
-    course_catalog_by_id = load_course_catalog_by_id()
+    course_catalog = _catalog_from_state(state)
+    course_catalog_by_id = _catalog_by_id_from_state(state)
 
-    ranked_courses = course_search(state["query"], state["preferred_directions"], max_results=12)
+    ranked_courses = course_search_in_catalog(
+        state["query"],
+        state["preferred_directions"],
+        course_catalog,
+        max_results=12,
+    )
     if not ranked_courses:
-        ranked_courses = course_search("", state["preferred_directions"], max_results=12)
+        ranked_courses = course_search_in_catalog(
+            "",
+            state["preferred_directions"],
+            course_catalog,
+            max_results=12,
+        )
 
     ranked_ids = [course["course_id"] for course in ranked_courses]
     for course in course_catalog:
@@ -380,7 +408,7 @@ def generate_candidate_plans(
     llm_service: LLMService | None = None,
 ) -> PlannerState:
     """Generate raw variant candidates from retrieved courses."""
-    course_catalog_by_id = load_course_catalog_by_id()
+    course_catalog_by_id = _catalog_by_id_from_state(state)
     candidate_plans: list[dict[str, Any]] = []
     available_courses = _available_courses_for_llm(state["retrieved_courses"])
     llm_candidates_by_label: dict[str, dict[str, Any]] = {}
@@ -458,8 +486,8 @@ def generate_candidate_plans(
 
 def validate_plans(state: PlannerState) -> PlannerState:
     """Validate raw candidate plans against deterministic tools."""
-    course_catalog_by_id = load_course_catalog_by_id()
-    degree_requirements = _load_degree_requirements()
+    course_catalog_by_id = _catalog_by_id_from_state(state)
+    degree_requirements = _degree_requirements_from_state(state)
     validation_results: list[dict[str, Any]] = []
 
     for candidate_plan in state["candidate_plans"]:
@@ -605,12 +633,21 @@ def run_planner_graph(
     memory_service: MemoryService | None = None,
     llm_service: LLMService | None = None,
     trace_service: TraceService | None = None,
+    course_catalog: list[dict[str, Any]] | None = None,
+    course_catalog_by_id: dict[str, dict[str, Any]] | None = None,
+    degree_requirements: dict[str, Any] | None = None,
 ) -> PlanningResponse:
     """Execute the deterministic planner graph end to end."""
     resolved_memory_service = memory_service or MemoryService()
     resolved_llm_service = llm_service or LLMService()
     resolved_trace_service = trace_service or TraceService()
     state: PlannerState = {}
+    if course_catalog is not None:
+        state["course_catalog"] = course_catalog
+    if course_catalog_by_id is not None:
+        state["course_catalog_by_id"] = course_catalog_by_id
+    if degree_requirements is not None:
+        state["degree_requirements"] = degree_requirements
     state = load_user_context(state, request, resolved_memory_service)
     resolved_trace_service.start_trace(state["trace_id"], user_id=state["user_id"], term=state["term"])
     resolved_trace_service.record_stage(state["trace_id"], "load_user_context", state["trace"][-1]["details"])

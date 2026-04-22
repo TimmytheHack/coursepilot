@@ -177,6 +177,21 @@ PY
 
 Reports are written to `app/eval/reports/` and are intentionally ignored by git.
 
+To run the dedicated BU sample experiment path without changing the default catalog:
+
+```bash
+python3 - <<'PY'
+from pathlib import Path
+from app.eval.runner import run_eval_suite
+print(
+    run_eval_suite(
+        catalog_id="bu_sample",
+        cases_path=Path("app/eval/cases_bu_sample.jsonl"),
+    )
+)
+PY
+```
+
 ## Memory and Database
 
 The MVP memory layer uses SQLite.

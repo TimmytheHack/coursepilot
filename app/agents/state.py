@@ -18,6 +18,9 @@ class PlannerState(TypedDict, total=False):
     avoid_morning_classes: bool
     season: str
     user_profile: dict[str, Any]
+    course_catalog: list[dict[str, Any]]
+    course_catalog_by_id: dict[str, dict[str, Any]]
+    degree_requirements: dict[str, Any]
     retrieved_courses: list[dict[str, Any]]
     candidate_plans: list[dict[str, Any]]
     validation_results: list[dict[str, Any]]

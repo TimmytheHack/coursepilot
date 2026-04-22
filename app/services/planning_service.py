@@ -12,10 +12,16 @@ def generate_semester_plan(
     request: PlanGenerateRequest,
     memory_service: MemoryService | None = None,
     llm_service: LLMService | None = None,
+    course_catalog: list[dict[str, object]] | None = None,
+    course_catalog_by_id: dict[str, dict[str, object]] | None = None,
+    degree_requirements: dict[str, object] | None = None,
 ) -> PlanningResponse:
     """Generate deterministic candidate semester plans via the planner graph."""
     return run_planner_graph(
         request,
         memory_service=memory_service,
         llm_service=llm_service,
+        course_catalog=course_catalog,
+        course_catalog_by_id=course_catalog_by_id,
+        degree_requirements=degree_requirements,
     )
