@@ -192,6 +192,18 @@ Stored data currently includes:
 - preferred directions
 - rejected-course memories
 
+## Additional Catalog Fixture
+
+The default planner and API search route continue to use `data/courses.json`.
+
+A separate imported sample catalog now lives at:
+
+- `data/imports/bu_sample_courses.json`
+
+This imported fixture is normalized explicitly for tests and future experiments.
+It does not replace the default catalog unless code calls the import loader
+directly.
+
 ## Optional Anthropic LLM Mode
 
 CoursePilot runs fully in deterministic mode by default. To enable optional

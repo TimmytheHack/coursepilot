@@ -73,10 +73,20 @@ def course_search(
     max_results: int = 10,
 ) -> list[dict[str, Any]]:
     """Search the local sample catalog with deterministic ranking heuristics."""
+    catalog = _load_course_catalog()
+    return course_search_in_catalog(query, preferred_directions, catalog, max_results=max_results)
+
+
+def course_search_in_catalog(
+    query: str,
+    preferred_directions: list[str],
+    catalog: list[dict[str, Any]],
+    max_results: int = 10,
+) -> list[dict[str, Any]]:
+    """Search an explicit catalog with the deterministic ranking heuristics."""
     if max_results <= 0:
         raise ValueError("max_results must be greater than zero.")
 
-    catalog = _load_course_catalog()
     query_terms = _tokenize(query)
     normalized_preferences = [_normalize(direction) for direction in preferred_directions]
 

@@ -1,0 +1,263 @@
+[
+  {
+    "course_id": "CS115",
+    "title": "Academic Writing in Computer Science",
+    "department": "CS",
+    "credits": 2,
+    "description": "Writing-intensive course focused on current computer science issues, critical reading, argumentation, and engagement with sources.",
+    "terms_offered": [
+      "Spring"
+    ],
+    "prerequisites": [
+      "WR120 or equivalent",
+      "CS111"
+    ],
+    "corequisites": [],
+    "categories": [
+      "writing",
+      "communication",
+      "computer_science"
+    ],
+    "difficulty": 2,
+    "workload": 2,
+    "time_slots": [
+      {
+        "term": "Spring 2026",
+        "days": [
+          "Mon"
+        ],
+        "start": "14:30",
+        "end": "16:15",
+        "section": "A1"
+      },
+      {
+        "term": "Spring 2026",
+        "days": [
+          "Wed"
+        ],
+        "start": "12:20",
+        "end": "14:05",
+        "section": "A2"
+      }
+    ],
+    "career_tags": [
+      "writing",
+      "technical_communication",
+      "software_engineering"
+    ],
+    "rating_summary": "Low-credit writing course that strengthens technical reading and argument skills."
+  },
+  {
+    "course_id": "CS350",
+    "title": "Fundamentals of Computing Systems",
+    "department": "CS",
+    "credits": 4,
+    "description": "Programming-centric introduction to computing systems, including system design principles, performance analysis, communication and synchronization primitives, concurrency control, database transactions, data consistency, task and data parallelism, replication, fault tolerance, and distributed consensus.",
+    "terms_offered": [
+      "Fall",
+      "Spring"
+    ],
+    "prerequisites": [
+      "CS210"
+    ],
+    "corequisites": [],
+    "categories": [
+      "systems",
+      "distributed_systems",
+      "concurrency"
+    ],
+    "difficulty": 4,
+    "workload": 4,
+    "time_slots": [],
+    "career_tags": [
+      "systems",
+      "backend",
+      "distributed_systems",
+      "software_engineering"
+    ],
+    "rating_summary": "Core systems course with strong conceptual and implementation value for backend and infrastructure directions."
+  },
+  {
+    "course_id": "MA541",
+    "title": "Modern Algebra 1",
+    "department": "MA",
+    "credits": 4,
+    "description": "Basic properties of groups, Sylow theorems, basic properties of rings and ideals, Euclidean rings, and polynomial rings.",
+    "terms_offered": [
+      "Fall"
+    ],
+    "prerequisites": [
+      "MA242 or MA442"
+    ],
+    "corequisites": [],
+    "categories": [
+      "math",
+      "algebra",
+      "theory"
+    ],
+    "difficulty": 4,
+    "workload": 4,
+    "time_slots": [
+      {
+        "term": "Fall 2025",
+        "days": [
+          "Tue",
+          "Thu"
+        ],
+        "start": "09:30",
+        "end": "10:45",
+        "section": "A1"
+      },
+      {
+        "term": "Fall 2025",
+        "days": [
+          "Fri"
+        ],
+        "start": "09:05",
+        "end": "09:55",
+        "section": "B1"
+      },
+      {
+        "term": "Fall 2025",
+        "days": [
+          "Fri"
+        ],
+        "start": "10:10",
+        "end": "11:00",
+        "section": "B2"
+      }
+    ],
+    "career_tags": [
+      "pure_math",
+      "theory",
+      "research_foundation"
+    ],
+    "rating_summary": "Proof-heavy algebra sequence course; excellent for abstract math depth but not directly applied to AI engineering."
+  },
+  {
+    "course_id": "MA711",
+    "title": "Real Analysis",
+    "department": "MA",
+    "credits": 4,
+    "description": "Measure theory and integration on measure spaces, specialization to integration on locally compact spaces, and the Haar integral. Lp spaces, duality, representation theorems, Banach and Hilbert spaces, open mapping theorem, spectral theorem for Hermitian operators, and compact and Fredholm operators.",
+    "terms_offered": [
+      "Fall"
+    ],
+    "prerequisites": [
+      "MA512 or substantial mathematical experience"
+    ],
+    "corequisites": [],
+    "categories": [
+      "math",
+      "analysis",
+      "theory"
+    ],
+    "difficulty": 5,
+    "workload": 5,
+    "time_slots": [
+      {
+        "term": "Fall 2025",
+        "days": [
+          "Tue",
+          "Thu"
+        ],
+        "start": "12:30",
+        "end": "13:45",
+        "section": "A1"
+      }
+    ],
+    "career_tags": [
+      "pure_math",
+      "graduate_preparation",
+      "research_foundation"
+    ],
+    "rating_summary": "Graduate-level real analysis with a very high theory load; strong for mathematical maturity, but heavy alongside demanding CS."
+  },
+  {
+    "course_id": "PH100",
+    "title": "Introduction to Philosophy",
+    "department": "PH",
+    "credits": 4,
+    "description": "Introduces the nature of philosophical activity through careful study of major philosophical topics such as reality, knowledge, God's existence, and the significance of human life.",
+    "terms_offered": [
+      "Fall",
+      "Spring"
+    ],
+    "prerequisites": [],
+    "corequisites": [],
+    "categories": [
+      "humanities",
+      "philosophy",
+      "hub"
+    ],
+    "difficulty": 2,
+    "workload": 2,
+    "time_slots": [],
+    "career_tags": [
+      "critical_thinking",
+      "writing",
+      "breadth"
+    ],
+    "rating_summary": "Broad humanities course that can provide Hub coverage and intellectual balance in a technical semester."
+  },
+  {
+    "course_id": "CS598_AGENTIC_AI",
+    "title": "Agentic AI for Everything",
+    "department": "CS",
+    "credits": 4,
+    "description": "Hands-on course on building agentic systems that reason, plan, use tools, manage memory and context, and execute complex workflows. Includes reasoning loops, tool use, function calling, safety constraints, multi-agent systems, RLVR, and a personal agent final project.",
+    "terms_offered": [
+      "Fall 2026"
+    ],
+    "prerequisites": [
+      "Assumed satisfied"
+    ],
+    "corequisites": [],
+    "categories": [
+      "ai",
+      "llm_agents",
+      "applied_ai",
+      "project_based"
+    ],
+    "difficulty": 4,
+    "workload": 4,
+    "time_slots": [],
+    "career_tags": [
+      "agentic_ai",
+      "ai_application_engineer",
+      "llm_systems",
+      "product_engineering"
+    ],
+    "rating_summary": "Very aligned with AI application engineering and modern agent workflows."
+  },
+  {
+    "course_id": "CS599_ADV_NLP",
+    "title": "Advanced Natural Language Processing",
+    "department": "CS",
+    "credits": 4,
+    "description": "Advanced NLP course focused on deep learning methods for NLP, including transformers and alternatives, post-training and test-time compute scaling, model compression, long-context reasoning, representation steering and engineering, research paper reading, and an original research project.",
+    "terms_offered": [
+      "Fall 2026"
+    ],
+    "prerequisites": [
+      "Assumed satisfied"
+    ],
+    "corequisites": [],
+    "categories": [
+      "ai",
+      "nlp",
+      "deep_learning",
+      "research"
+    ],
+    "difficulty": 5,
+    "workload": 5,
+    "time_slots": [],
+    "career_tags": [
+      "nlp",
+      "llm_research",
+      "applied_ml",
+      "ai_engineering"
+    ],
+    "rating_summary": "Excellent fit for NLP and LLM depth, with a heavy reading, implementation, and project workload."
+  }
+]
