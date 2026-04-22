@@ -24,10 +24,18 @@ Then open:
 ## Run Tests
 
 ```bash
-pytest tests/test_health.py
+pytest
 ```
 
-## Next Step
+## Optional Anthropic LLM Mode
 
-Add typed request and response schemas plus placeholder planning, course search,
-and evaluation routes.
+CoursePilot runs fully in deterministic mode by default. To enable optional
+Anthropic-assisted candidate plan generation, set:
+
+```bash
+export COURSEPILOT_LLM_ENABLED=true
+export ANTHROPIC_API_KEY=your_key_here
+```
+
+The LLM is only used to suggest candidate plans. Prerequisites, schedule
+conflicts, graduation checks, and final response validation remain deterministic.

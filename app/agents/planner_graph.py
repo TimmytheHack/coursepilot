@@ -9,6 +9,7 @@ from typing import Any
 
 from app.agents.state import PlannerState
 from app.models.schemas import CoursePlan, PlanGenerateRequest, PlanningResponse
+from app.services.llm_service import LLMService
 from app.services.memory_service import MemoryService
 from app.tools.catalog import load_course_catalog, load_course_catalog_by_id
 from app.tools.course_search import course_search
@@ -148,6 +149,22 @@ def _build_rationale(variant: str) -> str:
     if variant == "conservative":
         return "Prefers a lighter course load while preserving progress with valid offerings."
     return "Balances course relevance with moderate workload and difficulty."
+
+
+def _available_courses_for_llm(retrieved_courses: list[dict[str, Any]]) -> list[dict[str, object]]:
+    """Build the minimal available-course payload sent to the LLM."""
+    return [
+        {
+            "course_id": ranked_course["course"]["course_id"],
+            "title": ranked_course["course"]["title"],
+            "credits": ranked_course["course"]["credits"],
+            "categories": ranked_course["course"]["categories"],
+            "career_tags": ranked_course["course"]["career_tags"],
+            "difficulty": ranked_course["course"]["difficulty"],
+            "workload": ranked_course["course"]["workload"],
+        }
+        for ranked_course in retrieved_courses
+    ]
 
 
 def _build_risks(
@@ -291,12 +308,42 @@ def retrieve_courses(state: PlannerState) -> PlannerState:
     return updated_state
 
 
-def generate_candidate_plans(state: PlannerState) -> PlannerState:
+def generate_candidate_plans(
+    state: PlannerState,
+    llm_service: LLMService | None = None,
+) -> PlannerState:
     """Generate raw variant candidates from retrieved courses."""
     course_catalog_by_id = load_course_catalog_by_id()
     candidate_plans: list[dict[str, Any]] = []
+    available_courses = _available_courses_for_llm(state["retrieved_courses"])
+    llm_candidates_by_label: dict[str, dict[str, Any]] = {}
+
+    if llm_service is not None:
+        llm_candidates = llm_service.suggest_candidate_plans(
+            query=state["query"],
+            term=state["term"],
+            completed_courses=state["completed_courses"],
+            preferred_directions=state["preferred_directions"],
+            max_courses=state["max_courses"],
+            max_credits=state["max_credits"],
+            available_courses=available_courses,
+        )
+        if llm_candidates:
+            for llm_candidate in llm_candidates:
+                llm_candidates_by_label[llm_candidate.label] = {
+                    "label": llm_candidate.label,
+                    "courses": llm_candidate.course_ids,
+                    "target_count": _target_course_count(llm_candidate.label, state["max_courses"]),
+                    "rationale_summary": llm_candidate.rationale_summary,
+                    "source": "llm",
+                }
 
     for variant in ("balanced", "ambitious", "conservative"):
+        llm_candidate = llm_candidates_by_label.get(variant)
+        if llm_candidate is not None:
+            candidate_plans.append(llm_candidate)
+            continue
+
         selected_courses: list[str] = []
         total_credits = 0
         target_count = _target_course_count(variant, state["max_courses"])
@@ -323,6 +370,8 @@ def generate_candidate_plans(state: PlannerState) -> PlannerState:
                     "label": variant,
                     "courses": selected_courses,
                     "target_count": target_count,
+                    "rationale_summary": None,
+                    "source": "deterministic",
                 }
             )
 
@@ -358,6 +407,8 @@ def validate_plans(state: PlannerState) -> PlannerState:
                 "label": candidate_plan["label"],
                 "courses": selected_courses,
                 "target_count": candidate_plan["target_count"],
+                "rationale_summary": candidate_plan.get("rationale_summary"),
+                "source": candidate_plan.get("source", "deterministic"),
                 "prerequisite_results": prerequisite_results,
                 "conflicts": conflicts,
                 "workload_summary": workload_summary,
@@ -405,7 +456,11 @@ def build_response(state: PlannerState) -> PlannerState:
             label=result["label"],
             courses=result["courses"],
             total_credits=int(result["workload_summary"]["total_credits"]),
-            rationale=_build_rationale(result["label"]),
+            rationale=(
+                f"{_build_rationale(result['label'])} {result['rationale_summary']}".strip()
+                if result.get("rationale_summary")
+                else _build_rationale(result["label"])
+            ),
             risks=_build_risks(
                 result["courses"],
                 int(result["target_count"]),
@@ -444,14 +499,16 @@ def build_response(state: PlannerState) -> PlannerState:
 def run_planner_graph(
     request: PlanGenerateRequest,
     memory_service: MemoryService | None = None,
+    llm_service: LLMService | None = None,
 ) -> PlanningResponse:
     """Execute the deterministic planner graph end to end."""
     resolved_memory_service = memory_service or MemoryService()
+    resolved_llm_service = llm_service or LLMService()
     state: PlannerState = {}
     state = load_user_context(state, request, resolved_memory_service)
     state = understand_intent(state)
     state = retrieve_courses(state)
-    state = generate_candidate_plans(state)
+    state = generate_candidate_plans(state, llm_service=resolved_llm_service)
     state = validate_plans(state)
     state = revise_if_needed(state)
     state = build_response(state)
