@@ -15,6 +15,7 @@ def _build_placeholder_plan(label: str) -> CoursePlan:
         courses=["CS000"],
         total_credits=4,
         rationale="Placeholder response until planning logic is implemented.",
+        validation_facts=["Validation facts are not available for placeholder responses."],
         risks=["Planning service not implemented yet."],
         fit_score=0.5,
     )

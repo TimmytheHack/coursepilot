@@ -31,6 +31,7 @@ class CoursePlan(BaseModel):
     courses: list[str]
     total_credits: int = Field(..., ge=0)
     rationale: str
+    validation_facts: list[str]
     risks: list[str]
     fit_score: float = Field(..., ge=0.0, le=1.0)
 

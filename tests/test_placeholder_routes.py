@@ -44,6 +44,7 @@ def test_generate_plan_returns_typed_placeholder_response() -> None:
     plan_course_sets = [tuple(plan["courses"]) for plan in payload["plans"]]
     assert len(plan_course_sets) == len(set(plan_course_sets))
     assert all(not set(plan["courses"]).intersection(completed_courses) for plan in payload["plans"])
+    assert all(plan["validation_facts"] for plan in payload["plans"])
     assert all(plan["total_credits"] <= 12 for plan in payload["plans"])
     assert payload["summary"].startswith("Generated 3 validated plan option")
 

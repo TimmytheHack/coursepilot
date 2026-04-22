@@ -11,6 +11,7 @@ from app.agents.state import PlannerState
 from app.models.schemas import CoursePlan, PlanGenerateRequest, PlanningResponse
 from app.services.llm_service import LLMService
 from app.services.memory_service import MemoryService
+from app.services.trace_service import TraceService
 from app.tools.catalog import load_course_catalog, load_course_catalog_by_id
 from app.tools.course_search import course_search
 from app.tools.graduation_checker import graduation_checker
@@ -197,6 +198,39 @@ def _build_risks(
     return risks
 
 
+def _build_validation_facts(result: dict[str, Any]) -> list[str]:
+    """Build concise public validation facts for one validated plan."""
+    workload_summary = result["workload_summary"]
+    graduation_summary = result["graduation_summary"]
+    satisfied_requirements = sum(
+        1 for requirement in graduation_summary["requirements"] if requirement["satisfied_after"]
+    )
+    total_requirements = len(graduation_summary["requirements"])
+
+    return [
+        "Prerequisites satisfied for all included courses.",
+        "No schedule conflicts detected for the selected term.",
+        (
+            f"Estimated workload: {workload_summary['workload_label']} "
+            f"({workload_summary['total_credits']} credits, "
+            f"avg difficulty {workload_summary['average_difficulty']})."
+        ),
+        (
+            f"Degree requirements satisfied after plan: "
+            f"{satisfied_requirements}/{total_requirements} tracked requirement groups."
+        ),
+    ]
+
+
+def _record_trace(state: PlannerState, stage: str, details: dict[str, Any]) -> PlannerState:
+    """Append a safe trace snapshot to state."""
+    updated_state = dict(state)
+    existing_trace = list(state.get("trace", []))
+    existing_trace.append({"stage": stage, "details": details})
+    updated_state["trace"] = existing_trace
+    return updated_state
+
+
 def load_user_context(
     state: PlannerState,
     request: PlanGenerateRequest,
@@ -239,12 +273,21 @@ def load_user_context(
             "max_credits": resolved_request.max_credits,
             "avoid_morning_classes": resolved_request.avoid_morning_classes,
             "user_profile": user_context["profile"],
+            "trace": [],
             "messages": ["load_user_context"],
             "trace_id": f"plan-{resolved_request.user_id}-{_normalize(resolved_request.term).replace(' ', '-')}",
             "error": None,
         }
     )
-    return updated_state
+    return _record_trace(
+        updated_state,
+        "load_user_context",
+        {
+            "completed_course_count": len(resolved_request.completed_courses),
+            "stored_preference_count": len(resolved_request.preferred_directions),
+            "profile_keys": sorted(user_context["profile"].keys()),
+        },
+    )
 
 
 def understand_intent(state: PlannerState) -> PlannerState:
@@ -256,7 +299,14 @@ def understand_intent(state: PlannerState) -> PlannerState:
     updated_state["preferred_directions"] = preferred_directions
     updated_state["season"] = season
     updated_state["messages"] = state["messages"] + ["understand_intent"]
-    return updated_state
+    return _record_trace(
+        updated_state,
+        "understand_intent",
+        {
+            "season": season,
+            "preferred_directions": preferred_directions,
+        },
+    )
 
 
 def retrieve_courses(state: PlannerState) -> PlannerState:
@@ -305,7 +355,14 @@ def retrieve_courses(state: PlannerState) -> PlannerState:
     updated_state = dict(state)
     updated_state["retrieved_courses"] = retrieved_courses
     updated_state["messages"] = state["messages"] + ["retrieve_courses"]
-    return updated_state
+    return _record_trace(
+        updated_state,
+        "retrieve_courses",
+        {
+            "retrieved_count": len(retrieved_courses),
+            "course_ids": [item["course"]["course_id"] for item in retrieved_courses[:8]],
+        },
+    )
 
 
 def generate_candidate_plans(
@@ -378,7 +435,15 @@ def generate_candidate_plans(
     updated_state = dict(state)
     updated_state["candidate_plans"] = candidate_plans
     updated_state["messages"] = state["messages"] + ["generate_candidate_plans"]
-    return updated_state
+    return _record_trace(
+        updated_state,
+        "generate_candidate_plans",
+        {
+            "variant_labels": [plan["label"] for plan in candidate_plans],
+            "sources": {plan["label"]: plan["source"] for plan in candidate_plans},
+            "course_ids": {plan["label"]: plan["courses"] for plan in candidate_plans},
+        },
+    )
 
 
 def validate_plans(state: PlannerState) -> PlannerState:
@@ -420,7 +485,21 @@ def validate_plans(state: PlannerState) -> PlannerState:
     updated_state = dict(state)
     updated_state["validation_results"] = validation_results
     updated_state["messages"] = state["messages"] + ["validate_plans"]
-    return updated_state
+    return _record_trace(
+        updated_state,
+        "validate_plans",
+        {
+            "results": [
+                {
+                    "label": result["label"],
+                    "valid": result["valid"],
+                    "conflict_count": len(result["conflicts"]),
+                    "workload_label": result["workload_summary"]["workload_label"],
+                }
+                for result in validation_results
+            ]
+        },
+    )
 
 
 def revise_if_needed(state: PlannerState) -> PlannerState:
@@ -443,7 +522,14 @@ def revise_if_needed(state: PlannerState) -> PlannerState:
     updated_state["messages"] = state["messages"] + ["revise_if_needed"]
     if not revised_results:
         updated_state["error"] = "No valid plans could be generated from the current request constraints."
-    return updated_state
+    return _record_trace(
+        updated_state,
+        "revise_if_needed",
+        {
+            "kept_labels": [result["label"] for result in revised_results],
+            "error": updated_state.get("error"),
+        },
+    )
 
 
 def build_response(state: PlannerState) -> PlannerState:
@@ -461,6 +547,7 @@ def build_response(state: PlannerState) -> PlannerState:
                 if result.get("rationale_summary")
                 else _build_rationale(result["label"])
             ),
+            validation_facts=_build_validation_facts(result),
             risks=_build_risks(
                 result["courses"],
                 int(result["target_count"]),
@@ -493,23 +580,40 @@ def build_response(state: PlannerState) -> PlannerState:
     updated_state = dict(state)
     updated_state["final_response"] = response.model_dump() if hasattr(response, "model_dump") else response.dict()
     updated_state["messages"] = state["messages"] + ["build_response"]
-    return updated_state
+    return _record_trace(
+        updated_state,
+        "build_response",
+        {
+            "plan_labels": [plan.label for plan in plans],
+            "next_actions": response.next_actions,
+        },
+    )
 
 
 def run_planner_graph(
     request: PlanGenerateRequest,
     memory_service: MemoryService | None = None,
     llm_service: LLMService | None = None,
+    trace_service: TraceService | None = None,
 ) -> PlanningResponse:
     """Execute the deterministic planner graph end to end."""
     resolved_memory_service = memory_service or MemoryService()
     resolved_llm_service = llm_service or LLMService()
+    resolved_trace_service = trace_service or TraceService()
     state: PlannerState = {}
     state = load_user_context(state, request, resolved_memory_service)
+    resolved_trace_service.start_trace(state["trace_id"], user_id=state["user_id"], term=state["term"])
+    resolved_trace_service.record_stage(state["trace_id"], "load_user_context", state["trace"][-1]["details"])
     state = understand_intent(state)
+    resolved_trace_service.record_stage(state["trace_id"], "understand_intent", state["trace"][-1]["details"])
     state = retrieve_courses(state)
+    resolved_trace_service.record_stage(state["trace_id"], "retrieve_courses", state["trace"][-1]["details"])
     state = generate_candidate_plans(state, llm_service=resolved_llm_service)
+    resolved_trace_service.record_stage(state["trace_id"], "generate_candidate_plans", state["trace"][-1]["details"])
     state = validate_plans(state)
+    resolved_trace_service.record_stage(state["trace_id"], "validate_plans", state["trace"][-1]["details"])
     state = revise_if_needed(state)
+    resolved_trace_service.record_stage(state["trace_id"], "revise_if_needed", state["trace"][-1]["details"])
     state = build_response(state)
+    resolved_trace_service.record_stage(state["trace_id"], "build_response", state["trace"][-1]["details"])
     return PlanningResponse(**state["final_response"])

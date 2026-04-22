@@ -22,6 +22,7 @@ class PlannerState(TypedDict, total=False):
     candidate_plans: list[dict[str, Any]]
     validation_results: list[dict[str, Any]]
     final_response: dict[str, Any]
+    trace: list[dict[str, Any]]
     messages: list[str]
     trace_id: str
     error: str | None
