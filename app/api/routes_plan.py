@@ -3,7 +3,7 @@
 from fastapi import APIRouter, HTTPException
 
 from app.models.schemas import CoursePlan, PlanningResponse, PlanGenerateRequest, PlanRefineRequest
-from app.services import generate_semester_plan
+from app.services.planning_service import generate_semester_plan
 
 router = APIRouter(prefix="/plan", tags=["plan"])
 
