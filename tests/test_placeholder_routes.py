@@ -21,22 +21,31 @@ def test_openapi_includes_day_two_routes() -> None:
 
 
 def test_generate_plan_returns_typed_placeholder_response() -> None:
-    """Plan generation route should return the expected placeholder schema."""
+    """Plan generation route should return validated deterministic plans."""
+    completed_courses = ["CS101", "CS120", "CS201", "CS240", "CS330"]
     response = client.post(
         "/plan/generate",
         json={
             "user_id": "u_001",
-            "query": "Build me a balanced semester.",
+            "query": "Build me a balanced semester focused on AI applications.",
             "term": "Fall 2026",
+            "completed_courses": completed_courses,
+            "preferred_directions": ["ai", "product"],
+            "max_courses": 3,
+            "max_credits": 12,
         },
     )
 
     payload = response.json()
 
     assert response.status_code == 200
-    assert payload["trace_id"] == "placeholder-generate-u_001"
-    assert payload["plans"][0]["label"] == "balanced-placeholder"
-    assert payload["plans"][0]["courses"] == ["CS000"]
+    assert payload["trace_id"] == "plan-u_001-fall-2026"
+    assert [plan["label"] for plan in payload["plans"]] == ["balanced", "ambitious", "conservative"]
+    plan_course_sets = [tuple(plan["courses"]) for plan in payload["plans"]]
+    assert len(plan_course_sets) == len(set(plan_course_sets))
+    assert all(not set(plan["courses"]).intersection(completed_courses) for plan in payload["plans"])
+    assert all(plan["total_credits"] <= 12 for plan in payload["plans"])
+    assert payload["summary"].startswith("Generated 3 validated plan option")
 
 
 def test_refine_plan_returns_typed_placeholder_response() -> None:

@@ -1,8 +1,9 @@
-"""Placeholder planning routes for the CoursePilot backend."""
+"""Planning routes for the CoursePilot backend."""
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 from app.models.schemas import CoursePlan, PlanningResponse, PlanGenerateRequest, PlanRefineRequest
+from app.services import generate_semester_plan
 
 router = APIRouter(prefix="/plan", tags=["plan"])
 
@@ -21,13 +22,11 @@ def _build_placeholder_plan(label: str) -> CoursePlan:
 
 @router.post("/generate", response_model=PlanningResponse)
 def generate_plan(payload: PlanGenerateRequest) -> PlanningResponse:
-    """Return a typed placeholder response for initial plan generation."""
-    return PlanningResponse(
-        trace_id=f"placeholder-generate-{payload.user_id}",
-        plans=[_build_placeholder_plan("balanced-placeholder")],
-        summary=f"Placeholder plan generated for {payload.term}.",
-        next_actions=["Implement deterministic planning service."],
-    )
+    """Return validated deterministic candidate plans."""
+    try:
+        return generate_semester_plan(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.post("/refine", response_model=PlanningResponse)
