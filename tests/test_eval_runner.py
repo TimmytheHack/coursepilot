@@ -166,7 +166,7 @@ def test_run_eval_suite_supports_bu_sample_catalog_fixture(tmp_path) -> None:
     }
     assert "CS598_AGENTIC_AI" in planned_courses
     assert "CS599_ADV_NLP" in planned_courses
-    assert refine_case["plans"][0]["courses"] == ["CS599_ADV_NLP", "CS598_AGENTIC_AI"]
+    assert set(refine_case["plans"][0]["courses"]) == {"CS598_AGENTIC_AI", "CS599_ADV_NLP"}
     assert search_case["search_results"][:2] == [
         {"course_id": "CS598_AGENTIC_AI", "title": "Agentic AI for Everything"},
         {"course_id": "CS599_ADV_NLP", "title": "Advanced Natural Language Processing"},

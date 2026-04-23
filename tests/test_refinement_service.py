@@ -60,6 +60,26 @@ def test_refine_semester_plan_keeps_named_course_and_replaces_explicit_course(tm
     ]
 
 
+def test_refine_semester_plan_supports_course_titles(tmp_path) -> None:
+    """Refinement should resolve exact course-title references conservatively."""
+    memory_service = MemoryService(db_path=tmp_path / "refine-title.db")
+
+    response = refine_semester_plan(
+        PlanRefineRequest(
+            user_id="u_refine_title",
+            prior_plan=_prior_plan_context(),
+            query="Keep Applied Machine Learning but replace Algorithms with something lighter.",
+        ),
+        memory_service=memory_service,
+    )
+
+    plan = response.plans[0]
+
+    assert len(response.plans) == 1
+    assert "CS340" in plan.courses
+    assert "CS310" not in plan.courses
+
+
 def test_refine_semester_plan_makes_plan_lighter(tmp_path) -> None:
     """Refinement should reduce deterministic workload when asked for a lighter plan."""
     memory_service = MemoryService(db_path=tmp_path / "refine-lighter.db")
@@ -79,6 +99,54 @@ def test_refine_semester_plan_makes_plan_lighter(tmp_path) -> None:
     assert len(response.plans) == 1
     assert response.plans[0].total_credits <= 8
     assert refined_workload < prior_workload
+
+
+def test_refine_semester_plan_rejects_ambiguous_title_reference(tmp_path) -> None:
+    """Refinement should fail clearly when a title fragment matches multiple prior courses."""
+    memory_service = MemoryService(db_path=tmp_path / "refine-ambiguous.db")
+
+    try:
+        refine_semester_plan(
+            PlanRefineRequest(
+                user_id="u_refine_ambiguous",
+                prior_plan={
+                    "plan_id": "plan_ambiguous",
+                    "query": "I want a machine learning semester.",
+                    "term": "Spring 2026",
+                    "courses": ["CS330", "CS340", "CS230"],
+                    "completed_courses": ["CS101", "CS120", "CS201", "CS240"],
+                    "preferred_directions": ["ai"],
+                    "max_courses": 3,
+                    "max_credits": 12,
+                },
+                query="Keep Machine Learning but replace Data Management.",
+            ),
+            memory_service=memory_service,
+        )
+    except ValueError as exc:
+        assert "ambiguous" in str(exc)
+    else:
+        raise AssertionError("Expected refinement to reject the ambiguous title reference.")
+
+
+def test_refine_semester_plan_rejects_unknown_title_reference(tmp_path) -> None:
+    """Refinement should fail clearly when a title resolves outside the prior plan."""
+    memory_service = MemoryService(db_path=tmp_path / "refine-title-miss.db")
+
+    try:
+        refine_semester_plan(
+            PlanRefineRequest(
+                user_id="u_refine_title_miss",
+                prior_plan=_prior_plan_context(),
+                query="Keep Distributed Systems but replace Algorithms with something lighter.",
+            ),
+            memory_service=memory_service,
+        )
+    except ValueError as exc:
+        assert "prior plan" in str(exc)
+        assert "CS370" in str(exc)
+    else:
+        raise AssertionError("Expected refinement to reject the out-of-plan title reference.")
 
 
 def test_refine_semester_plan_rejects_underspecified_request(tmp_path) -> None:

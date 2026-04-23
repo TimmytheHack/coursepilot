@@ -13,6 +13,7 @@ from app.services.trace_service import TraceService
 from app.tools.catalog import DEFAULT_CATALOG_ID, load_catalog, load_catalog_by_id
 
 _COURSE_ID_PATTERN = re.compile(r"\b[A-Z]{2,}\d{2,}(?:_[A-Z0-9]+)?\b")
+_TITLE_TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
 _DIRECTION_ALIASES = {
     "ai": {"ai", "machine learning", "ml", "nlp", "vision"},
     "systems": {"systems", "distributed", "operating systems", "infrastructure"},
@@ -20,6 +21,33 @@ _DIRECTION_ALIASES = {
     "security": {"security", "secure"},
     "product": {"product", "application", "applications", "design"},
     "software": {"software", "web", "backend"},
+}
+_TITLE_REFERENCE_STOPWORDS = {
+    "a",
+    "an",
+    "and",
+    "another",
+    "but",
+    "class",
+    "classes",
+    "course",
+    "courses",
+    "drop",
+    "easier",
+    "hard",
+    "harder",
+    "keep",
+    "less",
+    "lighter",
+    "more",
+    "one",
+    "remove",
+    "replace",
+    "something",
+    "the",
+    "this",
+    "with",
+    "without",
 }
 
 
@@ -48,6 +76,104 @@ def _build_trace_id(user_id: str, term: str) -> str:
 def _extract_course_ids(text: str) -> list[str]:
     """Extract machine-friendly course IDs from one text string."""
     return list(dict.fromkeys(_COURSE_ID_PATTERN.findall(text.upper())))
+
+
+def _title_tokens(text: str) -> set[str]:
+    """Return significant normalized title-reference tokens."""
+    return {
+        token
+        for token in _TITLE_TOKEN_PATTERN.findall(_normalize(text))
+        if token not in _TITLE_REFERENCE_STOPWORDS
+    }
+
+
+def _match_title_references(
+    clause: str,
+    course_ids: list[str],
+    course_catalog_by_id: dict[str, dict[str, Any]],
+) -> list[str]:
+    """Match exact or conservatively normalized course-title references."""
+    normalized_clause = _normalize(clause)
+    exact_matches = [
+        course_id
+        for course_id in course_ids
+        if _normalize(course_catalog_by_id[course_id]["title"]) in normalized_clause
+    ]
+    if exact_matches:
+        return exact_matches
+
+    clause_tokens = _title_tokens(clause)
+    partial_matches: list[str] = []
+    for course_id in course_ids:
+        title_tokens = _title_tokens(course_catalog_by_id[course_id]["title"])
+        if not title_tokens:
+            continue
+        minimum_overlap = min(2, len(title_tokens))
+        if len(title_tokens.intersection(clause_tokens)) >= minimum_overlap:
+            partial_matches.append(course_id)
+    return partial_matches
+
+
+def _looks_like_unresolved_title_reference(clause: str) -> bool:
+    """Return whether a clause appears to reference a course title by text."""
+    normalized_clause = _normalize(clause)
+    if not any(token in normalized_clause for token in ("keep", "replace", "remove", "drop", "without")):
+        return False
+    if any(
+        placeholder in normalized_clause
+        for placeholder in (
+            "replace one hard class",
+            "replace one difficult class",
+            "replace a hard class",
+            "replace a difficult class",
+            "replace one class",
+            "replace a class",
+            "with something lighter",
+            "with something easier",
+        )
+    ):
+        return False
+    return bool(_title_tokens(clause))
+
+
+def _resolve_clause_course_ids(
+    clause: str,
+    prior_plan_course_ids: list[str],
+    course_catalog_by_id: dict[str, dict[str, Any]],
+) -> list[str]:
+    """Resolve one clause to prior-plan course IDs using IDs or title references."""
+    explicit_course_ids = [
+        course_id
+        for course_id in _extract_course_ids(clause)
+        if course_id in prior_plan_course_ids
+    ]
+    if explicit_course_ids:
+        return explicit_course_ids
+
+    prior_title_matches = _match_title_references(clause, prior_plan_course_ids, course_catalog_by_id)
+    if len(prior_title_matches) == 1:
+        return prior_title_matches
+    if len(prior_title_matches) > 1:
+        ambiguous_list = ", ".join(prior_title_matches)
+        raise ValueError(f"Refinement title reference is ambiguous across prior-plan courses: {ambiguous_list}")
+
+    all_catalog_matches = _match_title_references(
+        clause,
+        list(course_catalog_by_id.keys()),
+        course_catalog_by_id,
+    )
+    non_prior_matches = [
+        course_id
+        for course_id in all_catalog_matches
+        if course_id not in prior_plan_course_ids
+    ]
+    if non_prior_matches:
+        invalid_list = ", ".join(non_prior_matches)
+        raise ValueError(f"Refinement can only reference courses from the prior plan: {invalid_list}")
+
+    if _looks_like_unresolved_title_reference(clause):
+        raise ValueError(f"No prior-plan course matched title reference: {clause.strip()}")
+    return []
 
 
 def _mentioned_directions(query: str) -> list[str]:
@@ -105,6 +231,7 @@ def _parse_refinement_intent(
     """Parse the supported deterministic refinement intents from one request."""
     normalized_query = _normalize(request.query)
     prior_plan_course_ids = set(request.prior_plan.courses)
+    ordered_prior_plan_course_ids = list(request.prior_plan.courses)
     mentioned_course_ids = [course_id for course_id in _extract_course_ids(request.query) if course_id in course_catalog_by_id]
 
     must_keep_course_ids: list[str] = []
@@ -114,11 +241,11 @@ def _parse_refinement_intent(
         clause = raw_clause.strip()
         if not clause:
             continue
-        clause_course_ids = [
-            course_id
-            for course_id in _extract_course_ids(clause)
-            if course_id in prior_plan_course_ids
-        ]
+        clause_course_ids = _resolve_clause_course_ids(
+            clause,
+            ordered_prior_plan_course_ids,
+            course_catalog_by_id,
+        )
         normalized_clause = _normalize(clause)
         if "keep" in normalized_clause:
             must_keep_course_ids.extend(course_id for course_id in clause_course_ids if course_id not in must_keep_course_ids)
