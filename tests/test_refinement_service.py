@@ -4,10 +4,12 @@ from app.models.schemas import PlanRefineRequest
 from app.services.memory_service import MemoryService
 from app.services.refinement_service import refine_semester_plan
 from app.services.trace_service import TraceService
-from app.tools.catalog import load_course_catalog_by_id
+from app.tools.catalog import load_catalog, load_catalog_by_id, load_course_catalog_by_id
 
 
 COURSE_CATALOG = load_course_catalog_by_id()
+BU_CATALOG = load_catalog("bu_sample")
+BU_CATALOG_BY_ID = load_catalog_by_id("bu_sample")
 
 
 def _prior_plan_context() -> dict[str, object]:
@@ -44,7 +46,7 @@ def test_refine_semester_plan_keeps_named_course_and_replaces_explicit_course(tm
     rejected_courses = memory_service.load_user_context("u_refine_keep_swap")["rejected_courses"]
 
     assert response.trace_id == "refine-u_refine_keep_swap-fall-2026"
-    assert len(response.plans) == 1
+    assert len(response.plans) >= 1
     assert plan.label == "refined"
     assert "CS340" in plan.courses
     assert "CS310" not in plan.courses
@@ -73,15 +75,13 @@ def test_refine_semester_plan_supports_course_titles(tmp_path) -> None:
         memory_service=memory_service,
     )
 
-    plan = response.plans[0]
-
-    assert len(response.plans) == 1
-    assert "CS340" in plan.courses
-    assert "CS310" not in plan.courses
+    assert len(response.plans) >= 1
+    assert all("CS340" in plan.courses for plan in response.plans)
+    assert all("CS310" not in plan.courses for plan in response.plans)
 
 
 def test_refine_semester_plan_makes_plan_lighter(tmp_path) -> None:
-    """Refinement should reduce deterministic workload when asked for a lighter plan."""
+    """Refinement should return multiple lighter alternatives when the planner supports them."""
     memory_service = MemoryService(db_path=tmp_path / "refine-lighter.db")
 
     response = refine_semester_plan(
@@ -94,11 +94,64 @@ def test_refine_semester_plan_makes_plan_lighter(tmp_path) -> None:
     )
 
     prior_workload = sum(COURSE_CATALOG[course_id]["workload"] for course_id in _prior_plan_context()["courses"])
-    refined_workload = sum(COURSE_CATALOG[course_id]["workload"] for course_id in response.plans[0].courses)
+    refined_course_sets = {tuple(plan.courses) for plan in response.plans}
+
+    assert len(response.plans) >= 2
+    assert len(refined_course_sets) == len(response.plans)
+    assert response.plans[0].label == "refined"
+    assert response.plans[1].label == "refined_option_2"
+    assert all(plan.total_credits <= 8 for plan in response.plans)
+    assert all(sum(COURSE_CATALOG[course_id]["workload"] for course_id in plan.courses) < prior_workload for plan in response.plans)
+
+
+def test_refine_semester_plan_falls_back_to_single_result_when_only_one_option_fits(tmp_path) -> None:
+    """Refinement should still return one plan when only one compatible alternative exists."""
+    memory_service = MemoryService(db_path=tmp_path / "refine-single.db")
+
+    response = refine_semester_plan(
+        PlanRefineRequest(
+            user_id="u_refine_single",
+            prior_plan={
+                "plan_id": "bu_plan_1",
+                "query": "I want an AI-focused semester with room for one breadth course.",
+                "term": "Fall 2026",
+                "courses": ["CS598_AGENTIC_AI", "PH100"],
+                "completed_courses": ["CS350"],
+                "preferred_directions": ["ai", "product"],
+                "max_courses": 2,
+                "max_credits": 8,
+            },
+            query="Keep CS598_AGENTIC_AI but replace PH100 with something more advanced.",
+        ),
+        memory_service=memory_service,
+        course_catalog=BU_CATALOG,
+        course_catalog_by_id=BU_CATALOG_BY_ID,
+    )
 
     assert len(response.plans) == 1
-    assert response.plans[0].total_credits <= 8
-    assert refined_workload < prior_workload
+    assert response.plans[0].label == "refined"
+    assert set(response.plans[0].courses) == {"CS598_AGENTIC_AI", "CS599_ADV_NLP"}
+
+
+def test_refine_semester_plan_orders_alternatives_deterministically(tmp_path) -> None:
+    """Repeated refinement should return the same alternative ordering."""
+    request = PlanRefineRequest(
+        user_id="u_refine_ordered",
+        prior_plan=_prior_plan_context(),
+        query="Avoid morning classes.",
+    )
+
+    first_response = refine_semester_plan(
+        request,
+        memory_service=MemoryService(db_path=tmp_path / "refine-ordered-1.db"),
+    )
+    second_response = refine_semester_plan(
+        request,
+        memory_service=MemoryService(db_path=tmp_path / "refine-ordered-2.db"),
+    )
+
+    assert [plan.courses for plan in first_response.plans] == [plan.courses for plan in second_response.plans]
+    assert [plan.label for plan in first_response.plans] == [plan.label for plan in second_response.plans]
 
 
 def test_refine_semester_plan_rejects_ambiguous_title_reference(tmp_path) -> None:

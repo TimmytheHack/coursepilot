@@ -333,13 +333,13 @@ def _parse_refinement_intent(
     )
 
 
-def _select_refined_plan(
+def _select_refined_plans(
     plans: list[CoursePlan],
     request: PlanRefineRequest,
     intent: RefinementIntent,
     course_catalog_by_id: dict[str, dict[str, Any]],
-) -> CoursePlan:
-    """Choose the best validated refined plan from planner output."""
+) -> list[CoursePlan]:
+    """Choose up to three validated refined alternatives from planner output."""
     prior_plan_course_ids = set(request.prior_plan.courses)
     prior_workload_total = _plan_workload_total(request.prior_plan.courses, course_catalog_by_id)
     prior_theory_count = _plan_theory_count(request.prior_plan.courses, course_catalog_by_id)
@@ -370,15 +370,39 @@ def _select_refined_plan(
             "No validated refinement satisfied the requested keep/remove and workload constraints."
         )
 
-    return max(
+    ranked_plans = sorted(
         compatible_plans,
         key=lambda plan: (
-            _plan_keep_overlap(plan, prior_plan_course_ids),
-            len(must_keep_set.intersection(plan.courses)),
-            prior_workload_total - _plan_workload_total(plan.courses, course_catalog_by_id),
-            plan.fit_score,
+            -_plan_keep_overlap(plan, prior_plan_course_ids),
+            -len(must_keep_set.intersection(plan.courses)),
+            abs(len(plan.courses) - len(request.prior_plan.courses)),
+            -(
+                prior_theory_count - _plan_theory_count(plan.courses, course_catalog_by_id)
+                if intent.reduce_theory
+                else 0
+            ),
+            -(
+                prior_workload_total - _plan_workload_total(plan.courses, course_catalog_by_id)
+                if intent.reduce_workload
+                else 0
+            ),
+            -plan.fit_score,
+            tuple(plan.courses),
         ),
     )
+
+    unique_ranked_plans: list[CoursePlan] = []
+    seen_course_sets: set[tuple[str, ...]] = set()
+    for plan in ranked_plans:
+        course_key = tuple(plan.courses)
+        if course_key in seen_course_sets:
+            continue
+        unique_ranked_plans.append(plan)
+        seen_course_sets.add(course_key)
+        if len(unique_ranked_plans) >= 3:
+            break
+
+    return unique_ranked_plans
 
 
 def refine_semester_plan(
@@ -478,29 +502,33 @@ def refine_semester_plan(
         },
     )
 
-    refined_base_plan = _select_refined_plan(
+    refined_base_plans = _select_refined_plans(
         planner_response.plans,
         request,
         intent,
         resolved_course_catalog_by_id,
     )
-    refined_plan = CoursePlan(
-        label="refined",
-        courses=refined_base_plan.courses,
-        total_credits=refined_base_plan.total_credits,
-        rationale=(
-            f"Refined from {request.prior_plan.plan_id}. {refined_base_plan.rationale}"
-        ),
-        validation_facts=refined_base_plan.validation_facts,
-        risks=refined_base_plan.risks,
-        fit_score=refined_base_plan.fit_score,
-    )
+    refined_plans = [
+        CoursePlan(
+            label="refined" if index == 0 else f"refined_option_{index + 1}",
+            courses=refined_base_plan.courses,
+            total_credits=refined_base_plan.total_credits,
+            rationale=(
+                f"Refined from {request.prior_plan.plan_id} using the {refined_base_plan.label} alternative. "
+                f"{refined_base_plan.rationale}"
+            ),
+            validation_facts=refined_base_plan.validation_facts,
+            risks=refined_base_plan.risks,
+            fit_score=refined_base_plan.fit_score,
+        )
+        for index, refined_base_plan in enumerate(refined_base_plans)
+    ]
     resolved_trace_service.record_stage(
         trace_id,
         "select_refined_plan",
         {
-            "selected_courses": refined_plan.courses,
-            "selected_total_credits": refined_plan.total_credits,
+            "selected_labels": [plan.label for plan in refined_plans],
+            "selected_courses": [plan.courses for plan in refined_plans],
         },
     )
 
@@ -521,13 +549,14 @@ def refine_semester_plan(
 
     return PlanningResponse(
         trace_id=trace_id,
-        plans=[refined_plan],
+        plans=refined_plans,
         summary=(
-            f"Refined {request.prior_plan.plan_id} into 1 validated plan for {request.prior_plan.term} "
+            f"Refined {request.prior_plan.plan_id} into {len(refined_plans)} validated plan"
+            f"{'s' if len(refined_plans) != 1 else ''} for {request.prior_plan.term} "
             "using deterministic planning constraints."
         ),
         next_actions=[
-            "Review whether the revised plan preserves the intended academic focus.",
+            "Compare the refined alternatives for workload, retained focus, and course overlap.",
             "If needed, refine again with a specific course replacement or tighter schedule preference.",
         ],
     )
