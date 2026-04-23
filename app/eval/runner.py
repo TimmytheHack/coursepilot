@@ -14,6 +14,7 @@ from app.services.memory_service import MemoryService
 from app.services.planning_service import generate_semester_plan
 from app.services.refinement_service import refine_semester_plan
 from app.tools.catalog import DEFAULT_CATALOG_ID, load_catalog, load_catalog_by_id
+from app.tools.course_search import course_search_in_catalog
 from app.tools.graduation_checker import graduation_checker
 from app.tools.prerequisite_checker import prerequisite_checker
 from app.tools.schedule_conflict_checker import schedule_conflict_checker
@@ -239,6 +240,30 @@ def _evaluate_refine_expectations(
     }
 
 
+def _evaluate_search_expectations(
+    expectations: dict[str, Any],
+    search_results: list[dict[str, Any]],
+) -> tuple[bool, dict[str, Any]]:
+    """Evaluate search-mode expectations against deterministic search results."""
+    result_ids = [course["course_id"] for course in search_results]
+    expected_top_result = expectations.get("expected_top_result")
+    expected_contains_ids = set(expectations.get("expected_contains_ids", []))
+    max_results = expectations.get("max_results")
+
+    top_result_matches = expected_top_result is None or (
+        bool(result_ids) and result_ids[0] == expected_top_result
+    )
+    contains_expected_ids = expected_contains_ids.issubset(set(result_ids))
+    count_ok = max_results is None or len(result_ids) <= max_results
+
+    passed = top_result_matches and contains_expected_ids and count_ok
+    return passed, {
+        "top_result_matches": top_result_matches,
+        "contains_expected_ids": contains_expected_ids,
+        "search_result_count": len(result_ids),
+    }
+
+
 def _evaluate_case(
     case: dict[str, Any],
     course_catalog: list[dict[str, Any]],
@@ -260,6 +285,7 @@ def _evaluate_case(
         before_entries = memory_service.get_memories(request_data["user_id"])
 
         response: PlanningResponse | None = None
+        search_results: list[dict[str, Any]] = []
         trace_id: str | None = None
         error_detail: str | None = None
         completed_courses: list[str]
@@ -277,6 +303,17 @@ def _evaluate_case(
                 )
                 completed_courses = request_model.prior_plan.completed_courses
                 term = request_model.prior_plan.term
+                response = PlanningResponse.model_validate(response)
+                trace_id = response.trace_id
+            elif mode == "search":
+                search_results = course_search_in_catalog(
+                    request_data["query"],
+                    request_data.get("preferred_directions", []),
+                    course_catalog,
+                    max_results=request_data.get("max_results", 10),
+                )
+                completed_courses = []
+                term = request_data.get("term", "")
             else:
                 request_model = PlanGenerateRequest(**request_data)
                 response = generate_semester_plan(
@@ -288,8 +325,8 @@ def _evaluate_case(
                 )
                 completed_courses = request_model.completed_courses
                 term = request_model.term
-            response = PlanningResponse.model_validate(response)
-            trace_id = response.trace_id
+                trace_id = response.trace_id
+                response = PlanningResponse.model_validate(response)
         except ValueError as exc:
             error_detail = str(exc)
             if mode == "refine":
@@ -297,12 +334,42 @@ def _evaluate_case(
                 completed_courses = request_model.prior_plan.completed_courses
                 term = request_model.prior_plan.term
                 trace_id = f"refine-{request_model.user_id}-{request_model.prior_plan.term.lower().replace(' ', '-')}"
+            elif mode == "search":
+                completed_courses = []
+                term = request_data.get("term", "")
             else:
                 request_model = PlanGenerateRequest(**request_data)
                 completed_courses = request_model.completed_courses
                 term = request_model.term
         after_entries = memory_service.get_memories(request_data["user_id"])
         memory_written = after_entries != before_entries
+
+    if mode == "search":
+        search_results = [] if error_detail is not None else search_results
+        passed, search_flags = _evaluate_search_expectations(expectations, search_results)
+        execution_status = "graceful_failure" if error_detail is not None else "completed"
+        return {
+            "case_id": case["case_id"],
+            "mode": mode,
+            "status": "passed" if passed else "failed",
+            "execution_status": execution_status,
+            "schema_valid": error_detail is None,
+            "trace_id": None,
+            "plans": [],
+            "prerequisite_valid_plans": 0,
+            "conflict_free_plans": 0,
+            "graduation_checked_plans": 0,
+            "expectations_met": passed,
+            "error_detail": error_detail,
+            "search_results": [
+                {
+                    "course_id": course["course_id"],
+                    "title": course["title"],
+                }
+                for course in search_results
+            ],
+            **search_flags,
+        }
 
     if response is not None:
         shared_summary = _summarize_response(

@@ -142,12 +142,34 @@ def test_run_eval_suite_supports_bu_sample_catalog_fixture(tmp_path) -> None:
 
     assert response.status == "completed"
     assert report["catalog_id"] == "bu_sample"
-    assert report["cases"][0]["status"] == "passed"
-    assert [plan["label"] for plan in report["cases"][0]["plans"]] == ["balanced", "ambitious", "conservative"]
+    assert report["metrics"]["case_count"] == 4.0
+    assert report["metrics"]["refine_case_count"] == 2.0
+    assert report["metrics"]["case_pass_rate"] == 1.0
+    assert [case["case_id"] for case in report["cases"]] == [
+        "eval_case_bu_sample_ai_focus",
+        "eval_case_bu_sample_refine_advanced_ai",
+        "eval_case_bu_sample_search_agentic_ai",
+        "eval_case_bu_sample_limited_refine_reduce_theory",
+    ]
+    assert all(case["status"] == "passed" for case in report["cases"])
+
+    generate_case = report["cases"][0]
+    refine_case = report["cases"][1]
+    search_case = report["cases"][2]
+    limitation_case = report["cases"][3]
+
+    assert [plan["label"] for plan in generate_case["plans"]] == ["balanced", "ambitious", "conservative"]
     planned_courses = {
         course_id
-        for plan in report["cases"][0]["plans"]
+        for plan in generate_case["plans"]
         for course_id in plan["courses"]
     }
     assert "CS598_AGENTIC_AI" in planned_courses
     assert "CS599_ADV_NLP" in planned_courses
+    assert refine_case["plans"][0]["courses"] == ["CS599_ADV_NLP", "CS598_AGENTIC_AI"]
+    assert search_case["search_results"][:2] == [
+        {"course_id": "CS598_AGENTIC_AI", "title": "Agentic AI for Everything"},
+        {"course_id": "CS599_ADV_NLP", "title": "Advanced Natural Language Processing"},
+    ]
+    assert limitation_case["execution_status"] == "graceful_failure"
+    assert "No validated refinement" in limitation_case["error_detail"]
